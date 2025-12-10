@@ -1,0 +1,5 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- Fond transparent, icône noire (Android changera la couleur automatiquement) -->
+  <path d="M256 0C160 0 96 10 64 32v160c0 160 60 240 192 320 132-80 192-160 192-320V32c-32-22-96-32-192-32z" fill="black"/>
+  <path d="M256 64c-10 0-20 5-30 15-20 20-20 60 10 100 0 0-40-20-50 20-10 40 40 90 70 90s80-50 70-90c-10-40-50-20-50-20 30-40 30-80 10-100-10-10-20-15-30-15z" fill="white"/>
+</svg>
