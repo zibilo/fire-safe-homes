@@ -1,0 +1,53 @@
+# .github/workflows/android-build.yml
+name: Android Build (Capacitor)
+
+on:
+  push:
+    branches:
+      - main
+      - master
+  workflow_dispatch:
+
+jobs:
+  build_android:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v4
+    
+    # --- DÉFINITION DE LA RACINE DU PROJET ---
+    - name: Set working directory (IMPORTANT)
+      run: echo "APP_ROOT=Congo-pom-master" >> $GITHUB_ENV
+    
+    # Définir l'environnement pour Node et Java (Capacitor/Gradle)
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: 18
+
+    - name: Setup Java
+      uses: actions/setup-java@v4
+      with:
+        distribution: 'zulu'
+        java-version: '17'
+        
+    # Installer les dépendances NPM
+    - name: Install Dependencies
+      working-directory: ${{ env.APP_ROOT }}
+      run: npm install
+
+    # Compiler l'application web (Vite build)
+    - name: Run Web Build
+      working-directory: ${{ env.APP_ROOT }}
+      run: npm run build
+
+    # Exécuter la commande Gradle pour générer le fichier APK (Debug)
+    - name: Build Android App (APK)
+      working-directory: ${{ env.APP_ROOT }}/android
+      run: ./gradlew assembleDebug
+
+    # Charger le fichier APK comme artefact téléchargeable
+    - uses: actions/upload-artifact@v4
+      with:
+        name: android-debug-apk
+        path: ${{ env.APP_ROOT }}/android/app/build/outputs/apk/debug/app-debug.apk

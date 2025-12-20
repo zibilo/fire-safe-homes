@@ -1,0 +1,9 @@
+[{
+      "relation": ["delegate_permission/common.handle_all_urls"],
+      "target": {
+        "namespace": "android_app",
+        "package_name": "app.netlify.pompier_242.twa",
+        "sha256_cert_fingerprints": ["3A:F0:E4:5C:FD:50:AB:8F:E5:A9:91:1A:53:5A:3D:93:0B:AB:FE:BE:F3:40:80:55:38:61:48:D6:63:36:79:92"]
+      }
+    }]
+

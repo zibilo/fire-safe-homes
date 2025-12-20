@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="fr">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    
+    <!-- PWA Configuration -->
+    <meta name="theme-color" content="#C41E25" />
+    <meta name="description" content="Application de gestion et prévention incendie" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+    
+    <!-- 👇 C'EST CETTE LIGNE QUI MANQUAIT POUR PWA BUILDER 👇 -->
+    <link rel="manifest" href="/manifest.webmanifest" />
+    
+    <title>Fire Safe Homes</title>
+    <meta name="author" content="Pompier" />
+
+    <!-- Open Graph / Social Media -->
+    <meta property="og:title" content="Fire Safe Homes" />
+    <meta property="og:description" content="Application de gestion et prévention incendie" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="" />
+
+    <meta name="twitter:card" content="" />
+    <meta name="twitter:site" content="" />
+    <meta name="twitter:image" content="" />
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    
+    <!-- Script Lovable existant (ne pas toucher) -->
+    <script
+        src="https://slelguoygbfzlpylpxfs.supabase.co/storage/v1/object/public/scripts//route-messenger-vite.js"
+       data-target-origin="*"
+        data-message-type="ROUTE_CHANGE"
+        data-include-search-params="true"
+        data-only-in-iframe="true"
+        data-debug="true"
+        data-custom-data='{"appName": "FireSafeHomes", "version": "1.0.0", "greeting": "hi"}'
+        defer
+    ></script>
+  </body>
+</html>

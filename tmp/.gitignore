@@ -1,0 +1,10 @@
+/node_modules
+/dist
+/www
+*.log
+.env
+.DS_Store
+/android/build
+/ios/App/build
+*.apk
+*.ipa

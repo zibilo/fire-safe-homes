@@ -1,0 +1,62 @@
+{
+  "expo": {
+    "name": "SecurePompiersMobile",
+    "slug": "securepompiersmobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#10141D"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.zibido.securepompiers",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "L'application a besoin de votre position pour envoyer les secours à l'endroit exact.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "L'application a besoin de votre position pour le suivi en temps réel lors des interventions."
+      }
+    },
+    "android": {
+      "package": "com.zibido.securepompiers",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#10141D"
+      },
+      "permissions": [
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_FINE_LOCATION",
+        "FOREGROUND_SERVICE",
+        "POST_NOTIFICATIONS",
+        "VIBRATE",
+        "RECEIVE_BOOT_COMPLETED"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      "expo-router",
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Autorisez la localisation pour permettre aux pompiers de vous trouver en cas d'urgence."
+        }
+      ],
+      [
+        "onesignal-expo-plugin",
+        {
+          "mode": "development"
+        }
+      ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": "votre-project-id-ici-si-vous-en-avez-un"
+      }
+    }
+  }
+}

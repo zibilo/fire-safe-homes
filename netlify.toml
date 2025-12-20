@@ -1,0 +1,16 @@
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+# 1. CRUCIAL : On force le type "application/json" pour ce fichier
+# C'est obligatoire pour que Android accepte de le lire.
+[[headers]]
+  for = "/.well-known/assetlinks.json"
+  [headers.values]
+    Content-Type = "application/json"
+
+# 2. La redirection React (On la laisse à la fin)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1002277119556",
+    "project_id": "pompiers-notifs",
+    "storage_bucket": "pompiers-notifs.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1002277119556:android:cf49de549d2d61a512be11",
+        "android_client_info": {
+          "package_name": "com.zibido.securepompiers"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDuvfVoKug-Vz_jabwSW_1GU2gS8yuIMQU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
