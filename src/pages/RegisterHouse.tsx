@@ -112,20 +112,45 @@ const RegisterHouse = () => {
     if (!validateStep(4)) return;
 
     setSubmitting(true);
+    
+    // Fonction de retry pour les appels réseau instables (Android/Capacitor)
+    const retryOperation = async <T,>(
+      operation: () => Promise<T>,
+      maxRetries: number = 3,
+      delay: number = 1000
+    ): Promise<T> => {
+      let lastError: Error | null = null;
+      for (let attempt = 1; attempt <= maxRetries; attempt++) {
+        try {
+          return await operation();
+        } catch (error: any) {
+          lastError = error;
+          console.warn(`Tentative ${attempt}/${maxRetries} échouée:`, error.message);
+          if (attempt < maxRetries) {
+            await new Promise(resolve => setTimeout(resolve, delay * attempt));
+          }
+        }
+      }
+      throw lastError;
+    };
+
     try {
       // 1. Upload des images CNI si elles existent en tant que File
       let rectoUrl = "";
       let versoUrl = "";
 
-      // Fonction helper d'upload
-      const uploadFile = async (file: File | undefined, path: string) => {
+      // Fonction helper d'upload avec retry
+      const uploadFile = async (file: File | undefined, path: string): Promise<string | null> => {
         if (!file) return null;
-        const ext = file.name.split('.').pop();
-        const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
-        const { data, error } = await supabase.storage.from('documents').upload(fileName, file);
-        if (error) throw error;
-        const { data: urlData } = supabase.storage.from('documents').getPublicUrl(data.path);
-        return urlData.publicUrl;
+        
+        return retryOperation(async () => {
+          const ext = file.name.split('.').pop();
+          const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
+          const { data, error } = await supabase.storage.from('documents').upload(fileName, file);
+          if (error) throw error;
+          const { data: urlData } = supabase.storage.from('documents').getPublicUrl(data.path);
+          return urlData.publicUrl;
+        });
       };
 
       if (formData.idCardRectoFile) {
@@ -140,53 +165,76 @@ const RegisterHouse = () => {
       if (rectoUrl) allDocs.push(rectoUrl);
       if (versoUrl) allDocs.push(versoUrl);
 
-      // 3. Insertion en base
-      const { data, error } = await supabase.from("houses").insert({
-        user_id: user.id,
-        owner_name: formData.ownerName,
-        property_type: formData.propertyType,
-        city: formData.city,
-        district: formData.district,
-        neighborhood: formData.neighborhood,
-        street: formData.street,
-        parcel_number: formData.parcelNumber,
-        phone: formData.phone,
-        building_name: formData.buildingName,
-        floor_number: formData.floorNumber,
-        apartment_number: formData.apartmentNumber,
-        total_floors: formData.totalFloors,
-        elevator_available: formData.elevatorAvailable,
-        description: formData.description || "Aucune description", // Valeur par défaut
-        documents_urls: allDocs, // Inclut la CNI
-        photos_urls: formData.photosUrls,
-        plan_url: formData.planUrl,
-        number_of_rooms: formData.numberOfRooms,
-        surface_area: formData.surfaceArea,
-        construction_year: formData.constructionYear,
-        heating_type: formData.heatingType,
-        sensitive_objects: formData.sensitiveObjects,
-        security_notes: formData.securityNotes,
-      }).select().single();
+      // 3. Insertion en base avec retry
+      const insertHouse = async () => {
+        const { data, error } = await supabase.from("houses").insert({
+          user_id: user.id,
+          owner_name: formData.ownerName,
+          property_type: formData.propertyType,
+          city: formData.city,
+          district: formData.district,
+          neighborhood: formData.neighborhood,
+          street: formData.street,
+          parcel_number: formData.parcelNumber,
+          phone: formData.phone,
+          building_name: formData.buildingName,
+          floor_number: formData.floorNumber,
+          apartment_number: formData.apartmentNumber,
+          total_floors: formData.totalFloors,
+          elevator_available: formData.elevatorAvailable,
+          description: formData.description || "Aucune description",
+          documents_urls: allDocs,
+          photos_urls: formData.photosUrls,
+          plan_url: formData.planUrl,
+          number_of_rooms: formData.numberOfRooms,
+          surface_area: formData.surfaceArea,
+          construction_year: formData.constructionYear,
+          heating_type: formData.heatingType,
+          sensitive_objects: formData.sensitiveObjects,
+          security_notes: formData.securityNotes,
+        }).select().maybeSingle();
 
-      if (error) throw error;
+        if (error) throw error;
+        return data;
+      };
+
+      const data = await retryOperation(insertHouse);
 
       toast.success("Dossier envoyé avec succès !");
 
-      // Analyse IA (si plan)
+      // Analyse IA (si plan) - Fire and forget avec gestion d'erreur silencieuse
       if (formData.planUrl && data) {
         toast.info("Analyse du plan en cours...");
+        // Utiliser AbortController pour timeout
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+        
         fetch('https://sfgncyerlcditfepasjo.supabase.co/functions/v1/analyze-plan', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ planUrl: formData.planUrl, houseId: data.id })
-        }).catch(console.error);
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planUrl: formData.planUrl, houseId: data.id }),
+          signal: controller.signal
+        })
+        .catch((err) => console.warn("Analyse plan en arrière-plan:", err.message))
+        .finally(() => clearTimeout(timeoutId));
       }
 
       resetForm();
       navigate("/");
     } catch (error: any) {
-      console.error(error);
-      toast.error("Erreur lors de l'envoi : " + (error.message || "Inconnue"));
+      console.error("Erreur d'enregistrement:", error);
+      
+      // Messages d'erreur plus clairs pour l'utilisateur
+      let errorMessage = "Erreur lors de l'envoi";
+      if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
+        errorMessage = "Problème de connexion réseau. Vérifiez votre connexion et réessayez.";
+      } else if (error.message?.includes('timeout')) {
+        errorMessage = "La requête a pris trop de temps. Réessayez.";
+      } else if (error.message) {
+        errorMessage = error.message;
+      }
+      
+      toast.error(errorMessage);
     } finally {
       setSubmitting(false);
     }
