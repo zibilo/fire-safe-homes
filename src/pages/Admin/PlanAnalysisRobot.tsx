@@ -85,8 +85,7 @@ const PlanAnalysisRobot = () => {
         body: { 
             planUrl: planUrl, 
             houseId: HOUSE_ID_FOR_SAVE
-        },
-        timeout: 60000 
+        }
       });
 
       if (fnError) throw fnError;
