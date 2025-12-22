@@ -25,6 +25,7 @@ import HoverReceiver from "@/visual-edits/VisualEditsMessenger";
 
 // Pages Admin
 import AdminLogin from "./pages/Admin/AdminLogin";
+import AdminRegister from "./pages/Admin/AdminRegister";
 import AdminLayout from "./pages/Admin/AdminLayout";
 import Dashboard from "./pages/Admin/Dashboard";
 import Users from "./pages/Admin/Users";
@@ -35,6 +36,7 @@ import BlogManagement from "./pages/Admin/BlogManagement";
 import Stats from "./pages/Admin/Stats";
 import Reports from "./pages/Admin/Reports";
 import PlanAnalysisRobot from "./pages/Admin/PlanAnalysisRobot";
+import AdminValidation from "./pages/Admin/AdminValidation";
 
 // --- IMPORTS LAZY (Après les imports statiques) ---
 // 🆕 Page de Couverture pour le choix de la langue
@@ -196,8 +198,9 @@ const App = () => {
                 
                 <Route path="/auth" element={<Auth />} />
 
-                {/* --- ADMIN LOGIN --- */}
+                {/* --- ADMIN LOGIN & REGISTER --- */}
                 <Route path="/admin/login" element={<AdminLogin />} />
+                <Route path="/admin/register" element={<AdminRegister />} />
 
                 {/* --- ADMIN DASHBOARD (PROTECTED) --- */}
                 <Route 
@@ -217,6 +220,7 @@ const App = () => {
                   <Route path="stats" element={<Stats />} />
                   <Route path="reports" element={<Reports />} />
                   <Route path="robot-plan" element={<PlanAnalysisRobot />} />
+                  <Route path="validation" element={<AdminValidation />} />
                 </Route>
 
                 {/* CATCH-ALL */}

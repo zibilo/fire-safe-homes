@@ -294,6 +294,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_approved: boolean | null
+          matricule: string | null
           phone: string | null
           role: string | null
           updated_at: string | null
@@ -304,6 +305,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_approved?: boolean | null
+          matricule?: string | null
           phone?: string | null
           role?: string | null
           updated_at?: string | null
@@ -314,6 +316,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_approved?: boolean | null
+          matricule?: string | null
           phone?: string | null
           role?: string | null
           updated_at?: string | null

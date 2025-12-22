@@ -6,12 +6,12 @@ import {
   Home, 
   FileText, 
   BarChart3, 
-  // Settings, (Non utilisé dans votre liste mais importé)
   LogOut,
   Menu,
   Bot,
-  MapPin, // 1. Import de l'icône pour la géolocalisation
-  Droplets // (Optionnel) Si vous avez aussi intégré la carte des bornes incendie
+  MapPin,
+  Droplets,
+  ShieldCheck
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -26,16 +26,13 @@ const AdminLayout = () => {
     { name: "Tableau de bord", href: "/admin", icon: LayoutDashboard },
     { name: "Utilisateurs", href: "/admin/users", icon: Users },
     { name: "Maisons", href: "/admin/houses", icon: Home },
-    
-    // --- NOUVEAUX BOUTONS ---
-    { name: "Points d'eau", href: "/admin/hydrants", icon: Droplets }, // La carte des bornes (optionnel)
-    { name: "Géolocalisation", href: "/admin/locate", icon: MapPin },   // 2. Le bouton vers le système SMS manuel
-    // ------------------------
-
+    { name: "Points d'eau", href: "/admin/hydrants", icon: Droplets },
+    { name: "Géolocalisation", href: "/admin/locate", icon: MapPin },
     { name: "Robot Analyse", href: "/admin/robot-plan", icon: Bot },
     { name: "Blog", href: "/admin/blog", icon: FileText },
     { name: "Statistiques", href: "/admin/stats", icon: BarChart3 },
     { name: "Rapports", href: "/admin/reports", icon: FileText },
+    { name: "Validation Admins", href: "/admin/validation", icon: ShieldCheck },
   ];
 
   const NavLinks = () => (

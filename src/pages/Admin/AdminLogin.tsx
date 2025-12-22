@@ -5,8 +5,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { toast } from "sonner";
-import { Flame, Lock, Mail, ShieldCheck } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Flame, Lock, Mail, ShieldCheck, UserPlus } from "lucide-react";
+import { useNavigate, Link } from "react-router-dom";
 
 const AdminLogin = () => {
   const [email, setEmail] = useState("");
@@ -135,8 +135,12 @@ const AdminLogin = () => {
               </div>
             </Card>
 
-            <div className="text-center text-xs text-muted-foreground">
-              <p>Accès réservé aux administrateurs autorisés</p>
+            <div className="text-center space-y-3">
+              <p className="text-xs text-muted-foreground">Accès réservé aux administrateurs autorisés</p>
+              <Link to="/admin/register" className="inline-flex items-center gap-2 text-sm text-primary hover:underline">
+                <UserPlus className="h-4 w-4" />
+                Demander un accès administrateur
+              </Link>
             </div>
           </div>
         </div>
