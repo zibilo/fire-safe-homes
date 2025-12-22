@@ -172,7 +172,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
           'Content-Type': 'application/json',
           // L'authentification est gérée côté serveur si verify_jwt=false, 
           // sinon on passe la clé anon publique
-          'Authorization': `Bearer ${supabase.supabaseKey}`,
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmZ25jeWVybGNkaXRmZXBhc2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDQ2MTMsImV4cCI6MjA3ODMyMDYxM30.s6IptIujDq5TrJmEA5Oe8wXfKqMIGdArgtKLcQP3flE`,
         },
         body: JSON.stringify({
           planUrl: house.plan_url,

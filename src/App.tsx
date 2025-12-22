@@ -77,7 +77,24 @@ const App = () => {
           safari_web_id: "web.onesignal.auto.2e492b85-f706-48ae-9943-dda545a9792c",
           allowLocalhostAsSecureOrigin: true,
           notifyButton: {
-            enable: false, // On utilise votre bouton personnalisé (la cloche)
+            enable: false,
+            prenotify: false,
+            showCredit: false,
+            text: {
+              'tip.state.unsubscribed': 'S\'abonner aux notifications',
+              'tip.state.subscribed': 'Vous êtes abonné',
+              'tip.state.blocked': 'Notifications bloquées',
+              'message.prenotify': 'Cliquez pour vous abonner',
+              'message.action.subscribed': 'Merci de vous être abonné!',
+              'message.action.resubscribed': 'Vous êtes de nouveau abonné',
+              'message.action.unsubscribed': 'Vous ne recevrez plus de notifications',
+              'message.action.subscribing': 'Abonnement en cours...',
+              'dialog.main.title': 'Gérer les notifications',
+              'dialog.main.button.subscribe': 'S\'ABONNER',
+              'dialog.main.button.unsubscribe': 'SE DÉSABONNER',
+              'dialog.blocked.title': 'Débloquer les notifications',
+              'dialog.blocked.message': 'Suivez ces instructions pour autoriser les notifications:'
+            }
           },
           serviceWorkerParam: { scope: '/' },
           serviceWorkerPath: 'sw.js',

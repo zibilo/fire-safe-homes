@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
+// @ts-ignore - Plugin JS sans déclaration de type
 import { componentTaggerPlugin } from "./src/visual-edits/component-tagger-plugin.js";
 import { VitePWA } from "vite-plugin-pwa";
 
@@ -55,8 +56,8 @@ const logErrorsPlugin = () => ({
 // Configuration principale
 export default defineConfig(({ mode }) => ({
   server: {
-    host: "",
-    port: ,
+    host: "::",
+    port: 8080,
   },
   plugins: [
     react(),
@@ -74,13 +75,6 @@ export default defineConfig(({ mode }) => ({
       injectManifest: {
         // Augmente la limite de taille pour éviter l'erreur de build (5 Mo)
         maximumFileSizeToCacheInBytes: 5 * 1024 * 1024,
-        // Force le nom du fichier en sortie à 'sw.js' (au lieu de sw.mjs) pour PWA Builder
-        rollupOptions: {
-          output: {
-            format: 'es',
-            entryFileNames: 'sw.js', 
-          },
-        },
       },
 
       // Active le SW en local pour tester
