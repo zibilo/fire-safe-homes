@@ -6,10 +6,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardHeader, CardTitle, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Send, Map, Loader2, CheckCircle, Navigation, RefreshCw, History, Smartphone, MessageSquare, Search, MapPin, Layers } from 'lucide-react';
+import { Send, Map, Loader2, CheckCircle, Navigation, RefreshCw, History, Smartphone, MessageSquare, Search, MapPin, Layers, Download } from 'lucide-react';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { fr } from 'date-fns/locale';
+import { exportToExcel } from '@/lib/exportExcel';
 
 interface GeoRequest {
   id: string;
@@ -129,6 +130,19 @@ const ManualLocate = () => {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleExportGeo = () => {
+    const data = history.map(req => ({
+      "Téléphone": req.phone_number,
+      "Statut": req.status === 'located' ? 'Localisé' : 'En attente',
+      "Latitude": req.lat,
+      "Longitude": req.lng,
+      "Précision (m)": req.accuracy,
+      "Date": format(new Date(req.created_at), "dd/MM/yyyy HH:mm", { locale: fr })
+    }));
+    exportToExcel(data, "geolocalisations");
+    toast.success("Export terminé");
+  };
+
   // Composant réutilisable pour les boutons d'action
   const MapActions = ({ lat, lng }: { lat: number, lng: number }) => (
     <div className="space-y-3">
@@ -239,10 +253,13 @@ const ManualLocate = () => {
         {/* --- COLONNE DROITE : HISTORIQUE --- */}
         <div className="lg:col-span-2">
             <Card className="h-full border-t-4 border-gray-400">
-                <CardHeader>
+                <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="flex items-center gap-2 text-lg">
                         <History className="h-5 w-5" /> Historique
                     </CardTitle>
+                    <Button variant="outline" size="sm" onClick={handleExportGeo}>
+                        <Download className="mr-2 h-4 w-4" /> Export Excel
+                    </Button>
                 </CardHeader>
                 <CardContent>
                     <div className="rounded-md border">
