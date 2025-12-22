@@ -163,9 +163,9 @@ export const adminService = {
     }
   },
 
-  async deleteHouse(id: number) {
+  async deleteHouse(id: string | number) {
     try {
-      const { error } = await supabase.from('houses').delete().eq('id', id);
+      const { error } = await supabase.from('houses').delete().eq('id', String(id));
       if (error) throw error;
       return { success: true };
     } catch (error) {
@@ -300,7 +300,7 @@ export const adminService = {
     }
   },
 
-  async updateBlogPost(id: number, data: any) {
+  async updateBlogPost(id: string | number, data: any) {
     try {
       const updateData = {
         ...data,
@@ -314,7 +314,7 @@ export const adminService = {
       const { data: updatedPost, error } = await supabase
         .from('blog_posts')
         .update(updateData)
-        .eq('id', id)
+        .eq('id', String(id))
         .select()
         .single();
 
@@ -326,9 +326,9 @@ export const adminService = {
     }
   },
 
-  async deleteBlogPost(id: number) {
+  async deleteBlogPost(id: string | number) {
     try {
-      const { error } = await supabase.from('blog_posts').delete().eq('id', id);
+      const { error } = await supabase.from('blog_posts').delete().eq('id', String(id));
       if (error) throw error;
       return { success: true };
     } catch (error) {

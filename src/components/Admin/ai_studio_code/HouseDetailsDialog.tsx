@@ -146,7 +146,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
       const { error: dbError } = await supabase
         .from('houses')
         .update({ plan_url: publicUrl, updated_at: new Date().toISOString() })
-        .eq('id', house.id);
+        .eq('id', String(house.id));
 
       if (dbError) throw dbError;
 

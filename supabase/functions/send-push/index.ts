@@ -1,8 +1,5 @@
-// supabase/functions/send-push/index.ts
-
-import { createClient } from 'jsr:@supabase/supabase-js@2' // Utilisation de JSR (standard Deno) ou esm.sh
-// 👇 C'EST ICI LA CORRECTION : on utilise 'npm:' au lieu de 'https://esm.sh/...'
-import webpush from 'npm:web-push@3.6.7'
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import webpush from 'https://esm.sh/web-push@3.6.7'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -34,8 +31,6 @@ Deno.serve(async (req) => {
     )
 
     // Configuration VAPID
-    // Note: web-push via npm nécessite parfois que les clés soient passées différemment, 
-    // mais setVapidDetails est standard.
     try {
       webpush.setVapidDetails(
         'mailto:admin@ton-site.com',
@@ -75,12 +70,13 @@ Deno.serve(async (req) => {
           const subscription = typeof row.token === 'string' ? JSON.parse(row.token) : row.token
           await webpush.sendNotification(subscription, notificationPayload)
           return { success: true, id: row.id }
-        } catch (err: any) {
-          if (err.statusCode === 410 || err.statusCode === 404) {
+        } catch (err: unknown) {
+          const error = err as { statusCode?: number; message?: string }
+          if (error.statusCode === 410 || error.statusCode === 404) {
             console.log(`Token invalide (${row.id}). Suppression...`)
             await supabase.from('web_push_tokens').delete().eq('id', row.id)
           } else {
-            console.error(`Erreur envoi (${row.id}):`, err.message)
+            console.error(`Erreur envoi (${row.id}):`, error.message)
           }
           throw err
         }
@@ -94,9 +90,10 @@ Deno.serve(async (req) => {
       status: 200,
     })
 
-  } catch (error: any) {
-    console.error('Erreur critique:', error.message)
-    return new Response(JSON.stringify({ error: error.message }), {
+  } catch (error: unknown) {
+    const err = error as { message?: string }
+    console.error('Erreur critique:', err.message)
+    return new Response(JSON.stringify({ error: err.message }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       status: 500,
     })

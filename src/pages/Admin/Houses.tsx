@@ -241,7 +241,7 @@ const Houses = () => {
                         <Button 
                           variant="ghost" 
                           size="icon"
-                          onClick={() => handleDeleteHouse(house.id, `${house.street}, ${house.city}`)}
+                          onClick={() => handleDeleteHouse(String(house.id), `${house.street}, ${house.city}`)}
                           className="text-red-500 hover:bg-red-500/10 hover:text-red-600"
                           aria-label={`Supprimer le bien ${house.street}`}
                         >

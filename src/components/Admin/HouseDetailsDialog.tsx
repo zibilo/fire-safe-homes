@@ -186,7 +186,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
       const { error: dbError } = await supabase
         .from('houses')
         .update({ plan_url: newPublicUrl, updated_at: new Date().toISOString() })
-        .eq('id', house.id);
+        .eq('id', String(house.id));
 
       if (dbError) throw dbError;
 
@@ -225,12 +225,11 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
         }
       };
 
-      const anonKey = supabase.supabaseKey;
       const response = await fetch('https://sfgncyerlcditfepasjo.supabase.co/functions/v1/analyze-plan', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${anonKey}`,
+          'Authorization': `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNmZ25jeWVybGNkaXRmZXBhc2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI3NDQ2MTMsImV4cCI6MjA3ODMyMDYxM30.s6IptIujDq5TrJmEA5Oe8wXfKqMIGdArgtKLcQP3flE`,
         },
         body: JSON.stringify({
           planUrl: currentPlanUrl,
