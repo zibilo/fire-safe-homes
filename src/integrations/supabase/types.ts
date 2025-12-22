@@ -113,10 +113,12 @@ export type Database = {
       fire_stations: {
         Row: {
           alley: string | null
+          ambulance_available: boolean | null
           available_machines: string[] | null
           chief_email: string | null
           chief_name: string | null
           chief_whatsapp: string | null
+          city: string | null
           created_at: string | null
           created_by: string | null
           district: string
@@ -125,13 +127,22 @@ export type Database = {
           lng: number | null
           name: string
           parcel_number: string | null
+          personnel_count: number | null
+          postal_code: string | null
+          station_type: string | null
+          status: string | null
+          street: string | null
+          updated_at: string | null
+          vehicles_count: number | null
         }
         Insert: {
           alley?: string | null
+          ambulance_available?: boolean | null
           available_machines?: string[] | null
           chief_email?: string | null
           chief_name?: string | null
           chief_whatsapp?: string | null
+          city?: string | null
           created_at?: string | null
           created_by?: string | null
           district: string
@@ -140,13 +151,22 @@ export type Database = {
           lng?: number | null
           name: string
           parcel_number?: string | null
+          personnel_count?: number | null
+          postal_code?: string | null
+          station_type?: string | null
+          status?: string | null
+          street?: string | null
+          updated_at?: string | null
+          vehicles_count?: number | null
         }
         Update: {
           alley?: string | null
+          ambulance_available?: boolean | null
           available_machines?: string[] | null
           chief_email?: string | null
           chief_name?: string | null
           chief_whatsapp?: string | null
+          city?: string | null
           created_at?: string | null
           created_by?: string | null
           district?: string
@@ -155,6 +175,13 @@ export type Database = {
           lng?: number | null
           name?: string
           parcel_number?: string | null
+          personnel_count?: number | null
+          postal_code?: string | null
+          station_type?: string | null
+          status?: string | null
+          street?: string | null
+          updated_at?: string | null
+          vehicles_count?: number | null
         }
         Relationships: []
       }

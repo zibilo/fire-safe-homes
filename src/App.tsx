@@ -37,6 +37,8 @@ import Stats from "./pages/Admin/Stats";
 import Reports from "./pages/Admin/Reports";
 import PlanAnalysisRobot from "./pages/Admin/PlanAnalysisRobot";
 import AdminValidation from "./pages/Admin/AdminValidation";
+import FireStations from "./pages/Admin/FireStations";
+import SuperAdminPanel from "./pages/Admin/SuperAdminPanel";
 
 // --- IMPORTS LAZY (Après les imports statiques) ---
 // 🆕 Page de Couverture pour le choix de la langue
@@ -221,6 +223,8 @@ const App = () => {
                   <Route path="reports" element={<Reports />} />
                   <Route path="robot-plan" element={<PlanAnalysisRobot />} />
                   <Route path="validation" element={<AdminValidation />} />
+                  <Route path="fire-stations" element={<FireStations />} />
+                  <Route path="super-admin" element={<SuperAdminPanel />} />
                 </Route>
 
                 {/* CATCH-ALL */}
