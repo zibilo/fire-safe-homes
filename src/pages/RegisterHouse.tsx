@@ -12,12 +12,15 @@ import { useHouseForm } from "@/hooks/useHouseForm";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { SubmitProgressOverlay } from "@/components/ui/upload-progress";
 
 const RegisterHouse = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [direction, setDirection] = useState(0);
   const totalSteps = 5;
   const [submitting, setSubmitting] = useState(false);
+  const [submitProgress, setSubmitProgress] = useState(0);
+  const [submitStep, setSubmitStep] = useState("");
   
   const { formData, updateFormData, resetForm } = useHouseForm();
   const { user, loading } = useAuth();
@@ -31,22 +34,20 @@ const RegisterHouse = () => {
   }, [user, loading, navigate]);
 
   const steps = [
-    { number: 1, title: "Identité & Bien" }, // Titre mis à jour
+    { number: 1, title: "Identité & Bien" },
     { number: 2, title: "Adresse complète" },
     { number: 3, title: "Documents & Infos" },
     { number: 4, title: "Caractéristiques" },
     { number: 5, title: "Sécurité" },
   ];
 
-  // --- VALIDATION STRICTE PAR ÉTAPE ---
   const validateStep = (step: number) => {
     switch (step) {
-      case 1: // Identité
+      case 1:
         if (!formData.ownerName?.trim()) {
             toast.error("Le nom du propriétaire est obligatoire.");
             return false;
         }
-        // Validation CNI
         if (!formData.idCardRecto) {
             toast.error("La photo recto de la pièce d'identité est obligatoire.");
             return false;
@@ -57,7 +58,7 @@ const RegisterHouse = () => {
         }
         return true;
 
-      case 2: // Adresse
+      case 2:
         if (!formData.city?.trim() || !formData.district?.trim() || !formData.neighborhood?.trim() || !formData.street?.trim() || !formData.parcelNumber?.trim()) {
             toast.error("Tous les champs d'adresse sont obligatoires.");
             return false;
@@ -68,11 +69,10 @@ const RegisterHouse = () => {
         }
         return true;
 
-      case 3: // Documents (Description facultative)
-        // On peut laisser le plan optionnel ou le rendre obligatoire selon besoin
+      case 3:
         return true;
 
-      case 4: // Détails techniques (Tout obligatoire)
+      case 4:
         if (!formData.numberOfRooms || !formData.surfaceArea || !formData.constructionYear) {
             toast.error("Surface, nombre de pièces et année sont obligatoires.");
             return false;
@@ -89,7 +89,6 @@ const RegisterHouse = () => {
   };
 
   const handleNext = () => {
-    // Vérification avant de passer
     if (!validateStep(currentStep)) return;
 
     if (currentStep < totalSteps) {
@@ -107,13 +106,12 @@ const RegisterHouse = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
-
-    // Dernière validation
     if (!validateStep(4)) return;
 
     setSubmitting(true);
+    setSubmitProgress(0);
+    setSubmitStep("Préparation...");
     
-    // Fonction de retry pour les appels réseau instables (Android/Capacitor)
     const retryOperation = async <T,>(
       operation: () => Promise<T>,
       maxRetries: number = 3,
@@ -135,37 +133,79 @@ const RegisterHouse = () => {
     };
 
     try {
-      // 1. Upload des images CNI si elles existent en tant que File
       let rectoUrl = "";
       let versoUrl = "";
+      
+      // Calculer le nombre total d'étapes pour le pourcentage
+      const hasRecto = !!formData.idCardRectoFile;
+      const hasVerso = !!formData.idCardVersoFile;
+      const totalUploadSteps = (hasRecto ? 1 : 0) + (hasVerso ? 1 : 0) + 1; // +1 pour l'insertion DB
+      let completedSteps = 0;
 
-      // Fonction helper d'upload avec retry
-      const uploadFile = async (file: File | undefined, path: string): Promise<string | null> => {
-        if (!file) return null;
+      const uploadFileWithProgress = async (
+        file: File, 
+        path: string,
+        stepName: string
+      ): Promise<string> => {
+        setSubmitStep(stepName);
         
         return retryOperation(async () => {
           const ext = file.name.split('.').pop();
           const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
-          const { data, error } = await supabase.storage.from('documents').upload(fileName, file);
+          
+          // Simuler progression pendant l'upload
+          const startProgress = (completedSteps / totalUploadSteps) * 100;
+          const endProgress = ((completedSteps + 1) / totalUploadSteps) * 100;
+          
+          // Animation de progression
+          const progressInterval = setInterval(() => {
+            setSubmitProgress(prev => {
+              const increment = (endProgress - startProgress) / 20;
+              const newValue = prev + increment;
+              return newValue < endProgress - 5 ? newValue : prev;
+            });
+          }, 100);
+          
+          const { data, error } = await supabase.storage
+            .from('documents')
+            .upload(fileName, file);
+          
+          clearInterval(progressInterval);
+          
           if (error) throw error;
-          const { data: urlData } = supabase.storage.from('documents').getPublicUrl(data.path);
+          
+          completedSteps++;
+          setSubmitProgress((completedSteps / totalUploadSteps) * 100);
+          
+          const { data: urlData } = supabase.storage
+            .from('documents')
+            .getPublicUrl(data.path);
           return urlData.publicUrl;
         });
       };
 
       if (formData.idCardRectoFile) {
-         rectoUrl = await uploadFile(formData.idCardRectoFile, 'cni_recto') || "";
+        rectoUrl = await uploadFileWithProgress(
+          formData.idCardRectoFile, 
+          'cni_recto',
+          "Upload CNI recto..."
+        );
       }
+      
       if (formData.idCardVersoFile) {
-         versoUrl = await uploadFile(formData.idCardVersoFile, 'cni_verso') || "";
+        versoUrl = await uploadFileWithProgress(
+          formData.idCardVersoFile, 
+          'cni_verso',
+          "Upload CNI verso..."
+        );
       }
 
-      // 2. Insertion des documents dans la liste globale (pour garder la compatibilité base)
       const allDocs = [...formData.documentsUrls];
       if (rectoUrl) allDocs.push(rectoUrl);
       if (versoUrl) allDocs.push(versoUrl);
 
-      // 3. Insertion en base avec retry
+      setSubmitStep("Enregistrement des données...");
+      
       const insertHouse = async () => {
         const { data, error } = await supabase.from("houses").insert({
           user_id: user.id,
@@ -199,13 +239,16 @@ const RegisterHouse = () => {
       };
 
       const data = await retryOperation(insertHouse);
+      
+      setSubmitProgress(100);
+      setSubmitStep("Terminé !");
+      
+      await new Promise(resolve => setTimeout(resolve, 500));
 
       toast.success("Dossier envoyé avec succès !");
 
-      // Analyse IA (si plan) - Fire and forget avec gestion d'erreur silencieuse
       if (formData.planUrl && data) {
         toast.info("Analyse du plan en cours...");
-        // Utiliser AbortController pour timeout
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 30000);
         
@@ -224,7 +267,6 @@ const RegisterHouse = () => {
     } catch (error: any) {
       console.error("Erreur d'enregistrement:", error);
       
-      // Messages d'erreur plus clairs pour l'utilisateur
       let errorMessage = "Erreur lors de l'envoi";
       if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
         errorMessage = "Problème de connexion réseau. Vérifiez votre connexion et réessayez.";
@@ -237,6 +279,8 @@ const RegisterHouse = () => {
       toast.error(errorMessage);
     } finally {
       setSubmitting(false);
+      setSubmitProgress(0);
+      setSubmitStep("");
     }
   };
 
@@ -250,6 +294,15 @@ const RegisterHouse = () => {
 
   return (
     <div className="h-screen bg-[#10141D] text-white flex flex-col font-sans overflow-hidden">
+      
+      {/* Progress Overlay */}
+      <AnimatePresence>
+        <SubmitProgressOverlay 
+          progress={submitProgress} 
+          currentStep={submitStep} 
+          isVisible={submitting} 
+        />
+      </AnimatePresence>
       
       {/* HEADER FIXE */}
       <div className="flex-none bg-[#10141D] z-50">
