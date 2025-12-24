@@ -41,10 +41,10 @@ const AdminLogin = () => {
     }
   };
 
-  const fillMockCredentials = () => {
-    setEmail("admin@firesafe.com");
-    setPassword("admin123");
-    toast.info("Identifiants admin pré-remplis");
+  const fillTestCredentials = () => {
+    setEmail("admin@firesafehomes.com");
+    setPassword("");
+    toast.info("Email de test pré-rempli. Entrez votre mot de passe.");
   };
 
   return (
@@ -112,23 +112,22 @@ const AdminLogin = () => {
               </Button>
             </form>
 
-            {/* Mock credentials helper */}
             <Card className="p-4 bg-muted/50 border-dashed">
               <div className="space-y-3">
                 <p className="text-sm font-medium flex items-center gap-2">
                   <ShieldCheck className="h-4 w-4 text-primary" />
-                  Identifiants de test
+                  Super Admin de test
                 </p>
                 <div className="text-xs space-y-1 text-muted-foreground">
-                  <p>Email: <code className="bg-background px-2 py-1 rounded">admin@firesafe.com</code></p>
-                  <p>Mot de passe: <code className="bg-background px-2 py-1 rounded">admin123</code></p>
+                  <p>Email: <code className="bg-background px-2 py-1 rounded">admin@firesafehomes.com</code></p>
+                  <p className="text-yellow-600">Utilisez le mot de passe que vous avez défini</p>
                 </div>
                 <Button
                   type="button"
                   variant="outline"
                   size="sm"
                   className="w-full"
-                  onClick={fillMockCredentials}
+                  onClick={fillTestCredentials}
                 >
                   Utiliser les identifiants de test
                 </Button>
