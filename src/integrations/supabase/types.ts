@@ -321,6 +321,7 @@ export type Database = {
           full_name: string | null
           id: string
           is_approved: boolean | null
+          is_super_admin: boolean | null
           matricule: string | null
           phone: string | null
           role: string | null
@@ -332,6 +333,7 @@ export type Database = {
           full_name?: string | null
           id: string
           is_approved?: boolean | null
+          is_super_admin?: boolean | null
           matricule?: string | null
           phone?: string | null
           role?: string | null
@@ -343,6 +345,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           is_approved?: boolean | null
+          is_super_admin?: boolean | null
           matricule?: string | null
           phone?: string | null
           role?: string | null
@@ -809,6 +812,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_super_admin: { Args: { _user_id: string }; Returns: boolean }
       longtransactionsenabled: { Args: never; Returns: boolean }
       populate_geometry_columns:
         | { Args: { tbl_oid: unknown; use_typmod?: boolean }; Returns: number }
