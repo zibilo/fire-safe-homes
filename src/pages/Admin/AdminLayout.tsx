@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   Building2,
   Shield,
-  Bell
+  Bell,
+  Settings
 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
@@ -41,6 +42,7 @@ const AdminLayout = () => {
     { name: "Rapports", href: "/admin/reports", icon: FileText },
     { name: "Validation Admins", href: "/admin/validation", icon: ShieldCheck },
     { name: "Super Admin", href: "/admin/super-admin", icon: Shield },
+    { name: "Paramètres", href: "/admin/settings", icon: Settings },
   ];
 
   const NavLinks = () => (
