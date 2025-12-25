@@ -114,8 +114,8 @@ const RegisterHouse = () => {
     
     const retryOperation = async <T,>(
       operation: () => Promise<T>,
-      maxRetries: number = 3,
-      delay: number = 1000
+      maxRetries: number = 5,
+      delay: number = 2000
     ): Promise<T> => {
       let lastError: Error | null = null;
       for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -123,9 +123,25 @@ const RegisterHouse = () => {
           return await operation();
         } catch (error: any) {
           lastError = error;
-          console.warn(`Tentative ${attempt}/${maxRetries} échouée:`, error.message);
-          if (attempt < maxRetries) {
+          const errorMsg = error?.message || error?.toString() || 'Unknown error';
+          console.warn(`Tentative ${attempt}/${maxRetries} échouée:`, errorMsg);
+          
+          // Si c'est une erreur réseau ou "isTrusted", on réessaie
+          const isNetworkError = 
+            errorMsg.includes('fetch') || 
+            errorMsg.includes('network') || 
+            errorMsg.includes('Failed to fetch') ||
+            errorMsg.includes('NetworkError') ||
+            errorMsg.includes('timeout') ||
+            error?.isTrusted === true ||
+            (typeof error === 'object' && 'isTrusted' in error);
+          
+          if (attempt < maxRetries && isNetworkError) {
+            setSubmitStep(`Reconnexion... (${attempt}/${maxRetries})`);
             await new Promise(resolve => setTimeout(resolve, delay * attempt));
+          } else if (!isNetworkError) {
+            // Si ce n'est pas une erreur réseau, on ne réessaie pas
+            throw error;
           }
         }
       }
@@ -268,12 +284,21 @@ const RegisterHouse = () => {
       console.error("Erreur d'enregistrement:", error);
       
       let errorMessage = "Erreur lors de l'envoi";
-      if (error.message?.includes('fetch') || error.message?.includes('network') || error.message?.includes('Failed to fetch')) {
-        errorMessage = "Problème de connexion réseau. Vérifiez votre connexion et réessayez.";
-      } else if (error.message?.includes('timeout')) {
+      const errorStr = error?.message || error?.toString() || '';
+      
+      if (
+        errorStr.includes('fetch') || 
+        errorStr.includes('network') || 
+        errorStr.includes('Failed to fetch') ||
+        errorStr.includes('NetworkError') ||
+        error?.isTrusted === true ||
+        (typeof error === 'object' && 'isTrusted' in error)
+      ) {
+        errorMessage = "Problème de connexion réseau. Vérifiez votre connexion Internet et réessayez.";
+      } else if (errorStr.includes('timeout')) {
         errorMessage = "La requête a pris trop de temps. Réessayez.";
-      } else if (error.message) {
-        errorMessage = error.message;
+      } else if (errorStr) {
+        errorMessage = errorStr;
       }
       
       toast.error(errorMessage);
