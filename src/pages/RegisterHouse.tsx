@@ -412,4 +412,3 @@ const RegisterHouse = () => {
 };
 
 export default RegisterHouse;
-     

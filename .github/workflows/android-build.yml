@@ -5,6 +5,7 @@ on:
     branches:
       - main
       - master
+      - fix/form-submission-error-10510768070756373834
   workflow_dispatch:
 
 jobs:
