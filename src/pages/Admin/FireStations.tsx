@@ -9,7 +9,7 @@ import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Building2, Plus, Trash2, Edit, MapPin, Users, Truck, Ambulance, Download, Eye } from "lucide-react";
+import { Building2, Plus, Trash2, Edit, MapPin, Users, Truck, Ambulance, Download } from "lucide-react";
 import { toast } from "sonner";
 import { exportToExcel } from "@/lib/exportExcel";
 
@@ -38,7 +38,6 @@ const FireStations = () => {
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingStation, setEditingStation] = useState<FireStation | null>(null);
-  const [viewingStation, setViewingStation] = useState<FireStation | null>(null);
   
   const [formData, setFormData] = useState({
     name: "",
@@ -363,7 +362,6 @@ const FireStations = () => {
                       </Badge>
                     </TableCell>
                     <TableCell className="text-right">
-                      <Button variant="ghost" size="icon" onClick={() => setViewingStation(station)}><Eye className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" onClick={() => handleEdit(station)}><Edit className="h-4 w-4" /></Button>
                       <Button variant="ghost" size="icon" className="text-destructive" onClick={() => handleDelete(station.id)}><Trash2 className="h-4 w-4" /></Button>
                     </TableCell>
@@ -374,46 +372,6 @@ const FireStations = () => {
           </Table>
         </CardContent>
       </Card>
-
-      {viewingStation && (
-        <Dialog open={!!viewingStation} onOpenChange={(open) => !open && setViewingStation(null)}>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Détails de la caserne: {viewingStation.name}</DialogTitle>
-            </DialogHeader>
-            <div className="space-y-4 py-4">
-              <div className="grid grid-cols-2 gap-4">
-                <div><Label className="text-muted-foreground">Nom</Label><p>{viewingStation.name}</p></div>
-                <div><Label className="text-muted-foreground">Type</Label><p>{viewingStation.station_type}</p></div>
-                <div><Label className="text-muted-foreground">Statut</Label><p>{viewingStation.status}</p></div>
-                <div><Label className="text-muted-foreground">District</Label><p>{viewingStation.district}</p></div>
-                <div><Label className="text-muted-foreground">Ville</Label><p>{viewingStation.city || "-"}</p></div>
-                <div><Label className="text-muted-foreground">Rue</Label><p>{viewingStation.street || "-"}</p></div>
-                <div><Label className="text-muted-foreground">Code Postal</Label><p>{viewingStation.postal_code || "-"}</p></div>
-              </div>
-              <div className="border-t pt-4 grid grid-cols-2 gap-4">
-                 <div><Label className="text-muted-foreground">Coordonnées</Label><p>{viewingStation.lat}, {viewingStation.lng}</p></div>
-              </div>
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-2">Responsable</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="text-muted-foreground">Nom</Label><p>{viewingStation.chief_name || "-"}</p></div>
-                  <div><Label className="text-muted-foreground">Téléphone</Label><p>{viewingStation.chief_whatsapp || "-"}</p></div>
-                  <div><Label className="text-muted-foreground">Email</Label><p>{viewingStation.chief_email || "-"}</p></div>
-                </div>
-              </div>
-              <div className="border-t pt-4">
-                <h4 className="font-semibold mb-2">Ressources</h4>
-                <div className="grid grid-cols-3 gap-4">
-                  <div><Label className="text-muted-foreground">Personnel</Label><p>{viewingStation.personnel_count}</p></div>
-                  <div><Label className="text-muted-foreground">Véhicules</Label><p>{viewingStation.vehicles_count}</p></div>
-                  <div><Label className="text-muted-foreground">Ambulance</Label><p>{viewingStation.ambulance_available ? "Oui" : "Non"}</p></div>
-                </div>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
-      )}
     </div>
   );
 };
