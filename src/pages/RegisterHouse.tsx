@@ -318,7 +318,7 @@ const RegisterHouse = () => {
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
-    <div className="h-screen bg-[#10141D] text-white flex flex-col font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#10141D] text-white flex flex-col font-sans">
       
       {/* Progress Overlay */}
       <AnimatePresence>
@@ -330,7 +330,7 @@ const RegisterHouse = () => {
       </AnimatePresence>
       
       {/* HEADER FIXE */}
-      <div className="flex-none bg-[#10141D] z-50">
+      <div className="flex-shrink-0 bg-[#10141D] z-50">
         <div className="flex items-center px-4 h-14 border-b border-white/5">
           <Link to="/">
             <X className="w-6 h-6 text-gray-400 cursor-pointer hover:text-white transition-colors" />
@@ -350,7 +350,7 @@ const RegisterHouse = () => {
       </div>
 
       {/* CONTENU */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden relative p-6 pb-28">
+      <div className="flex-grow overflow-y-auto relative p-6 pb-28">
         <div className="mb-8 max-w-xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
              {currentStep === 1 && "Identité du propriétaire"}
@@ -388,7 +388,7 @@ const RegisterHouse = () => {
       </div>
 
       {/* FOOTER */}
-      <div className="flex-none bg-[#10141D] border-t border-white/10 p-4 px-6 z-50">
+      <div className="flex-shrink-0 bg-[#10141D] border-t border-white/10 p-4 px-6 z-50">
         <div className="flex items-center justify-between max-w-xl mx-auto w-full gap-4">
           {currentStep > 1 ? (
              <Button variant="ghost" onClick={handlePrevious} className="text-gray-400 hover:text-white hover:bg-white/5 pl-0 pr-4">
