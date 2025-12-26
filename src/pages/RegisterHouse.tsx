@@ -401,7 +401,7 @@ const RegisterHouse = () => {
               Continuer
             </Button>
           ) : (
-            <Button onClick={handleSubmit} className="bg-[#C41E25] hover:bg-[#a0181e] text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-red-900/20" disabled={submitting}>
+            <Button onClick={() => handleSubmit()} className="bg-[#C41E25] hover:bg-[#a0181e] text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-red-900/20" disabled={submitting}>
               {submitting ? "Envoi..." : "Terminer l'inscription"}
             </Button>
           )}
