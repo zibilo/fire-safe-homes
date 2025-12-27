@@ -149,24 +149,152 @@ const RegisterHouse = () => {
     };
 
     try {
-      // ... (le reste du code try reste identique)
+      let rectoUrl = "";
+      let versoUrl = "";
+
+      // Calculer le nombre total d'étapes pour le pourcentage
+      const hasRecto = !!formData.idCardRectoFile;
+      const hasVerso = !!formData.idCardVersoFile;
+      const totalUploadSteps = (hasRecto ? 1 : 0) + (hasVerso ? 1 : 0) + 1; // +1 pour l'insertion DB
+      let completedSteps = 0;
+
+      const uploadFileWithProgress = async (
+        file: File,
+        path: string,
+        stepName: string
+      ): Promise<string> => {
+        setSubmitStep(stepName);
+
+        return retryOperation(async () => {
+          const ext = file.name.split('.').pop();
+          const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
+
+          // Simuler progression pendant l'upload
+          const startProgress = (completedSteps / totalUploadSteps) * 100;
+          const endProgress = ((completedSteps + 1) / totalUploadSteps) * 100;
+
+          // Animation de progression
+          const progressInterval = setInterval(() => {
+            setSubmitProgress(prev => {
+              const increment = (endProgress - startProgress) / 20;
+              const newValue = prev + increment;
+              return newValue < endProgress - 5 ? newValue : prev;
+            });
+          }, 100);
+
+          const { data, error } = await supabase.storage
+            .from('documents')
+            .upload(fileName, file);
+
+          clearInterval(progressInterval);
+
+          if (error) throw error;
+
+          completedSteps++;
+          setSubmitProgress((completedSteps / totalUploadSteps) * 100);
+
+          const { data: urlData } = supabase.storage
+            .from('documents')
+            .getPublicUrl(data.path);
+          return urlData.publicUrl;
+        });
+      };
+
+      if (formData.idCardRectoFile) {
+        rectoUrl = await uploadFileWithProgress(
+          formData.idCardRectoFile,
+          'cni_recto',
+          "Upload CNI recto..."
+        );
+      }
+
+      if (formData.idCardVersoFile) {
+        versoUrl = await uploadFileWithProgress(
+          formData.idCardVersoFile,
+          'cni_verso',
+          "Upload CNI verso..."
+        );
+      }
+
+      const allDocs = [...formData.documentsUrls];
+      if (rectoUrl) allDocs.push(rectoUrl);
+      if (versoUrl) allDocs.push(versoUrl);
+
+      setSubmitStep("Enregistrement des données...");
+
+      const insertHouse = async () => {
+        const { data, error } = await supabase.from("houses").insert({
+          user_id: user.id,
+          owner_name: formData.ownerName,
+          property_type: formData.propertyType,
+          city: formData.city,
+          district: formData.district,
+          neighborhood: formData.neighborhood,
+          street: formData.street,
+          parcel_number: formData.parcelNumber,
+          phone: formData.phone,
+          building_name: formData.buildingName,
+          floor_number: formData.floorNumber,
+          apartment_number: formData.apartmentNumber,
+          total_floors: formData.totalFloors,
+          elevator_available: formData.elevatorAvailable,
+          description: formData.description || "Aucune description",
+          documents_urls: allDocs,
+          photos_urls: formData.photosUrls,
+          plan_url: formData.planUrl,
+          number_of_rooms: formData.numberOfRooms,
+          surface_area: formData.surfaceArea,
+          construction_year: formData.constructionYear,
+          heating_type: formData.heatingType,
+          sensitive_objects: formData.sensitiveObjects,
+          security_notes: formData.securityNotes,
+        }).select().maybeSingle();
+
+        if (error) throw error;
+        return data;
+      };
+
+      const data = await retryOperation(insertHouse);
+
+      setSubmitProgress(100);
+      setSubmitStep("Terminé !");
+
+      await new Promise(resolve => setTimeout(resolve, 500));
+
+      toast.success("Dossier envoyé avec succès !");
+
+      if (formData.planUrl && data) {
+        toast.info("Analyse du plan en cours...");
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
+
+        fetch('https://sfgncyerlcditfepasjo.supabase.co/functions/v1/analyze-plan', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ planUrl: formData.planUrl, houseId: data.id }),
+          signal: controller.signal
+        })
+        .catch((err) => console.warn("Analyse plan en arrière-plan:", err.message))
+        .finally(() => clearTimeout(timeoutId));
+      }
+
+      resetForm();
+      navigate("/");
     } catch (error: any) {
       console.error("Erreur d'enregistrement:", error);
 
-      // CORRECTION : Logique de gestion d'erreur améliorée
       let errorMessage = "Une erreur inattendue est survenue.";
 
       if (error && typeof error === 'object' && error.isTrusted === true) {
         errorMessage = "Erreur de connexion. Veuillez vérifier votre réseau et réessayer.";
       } else {
         const errorStr = error?.message || error?.toString() || '';
-        
+
         if (errorStr.toLowerCase().includes('network') || errorStr.toLowerCase().includes('fetch')) {
           errorMessage = "Problème de connexion réseau. Vérifiez votre connexion et réessayez.";
         } else if (errorStr.toLowerCase().includes('timeout')) {
           errorMessage = "La requête a pris trop de temps. Réessayez.";
         } else if (errorStr) {
-          // On évite d'afficher des erreurs trop techniques si possible
           errorMessage = "Erreur lors de l'envoi des données.";
         }
       }
@@ -188,7 +316,7 @@ const RegisterHouse = () => {
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
-    <div className="min-h-screen bg-[#10141D] text-white flex flex-col font-sans">
+    <div className="h-screen bg-[#10141D] text-white flex flex-col font-sans overflow-hidden">
       
       {/* Progress Overlay */}
       <AnimatePresence>
@@ -200,7 +328,7 @@ const RegisterHouse = () => {
       </AnimatePresence>
       
       {/* HEADER FIXE */}
-      <div className="flex-shrink-0 bg-[#10141D] z-50">
+      <div className="flex-none bg-[#10141D] z-50">
         <div className="flex items-center px-4 h-14 border-b border-white/5">
           <Link to="/">
             <X className="w-6 h-6 text-gray-400 cursor-pointer hover:text-white transition-colors" />
@@ -220,7 +348,7 @@ const RegisterHouse = () => {
       </div>
 
       {/* CONTENU */}
-      <div className="flex-grow overflow-y-auto relative p-6 pb-28">
+      <div className="flex-1 overflow-y-auto overflow-x-hidden relative p-6 pb-28">
         <div className="mb-8 max-w-xl mx-auto">
           <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
              {currentStep === 1 && "Identité du propriétaire"}
@@ -258,7 +386,7 @@ const RegisterHouse = () => {
       </div>
 
       {/* FOOTER */}
-      <div className="flex-shrink-0 bg-[#10141D] border-t border-white/10 p-4 px-6 z-50">
+      <div className="flex-none bg-[#10141D] border-t border-white/10 p-4 px-6 z-50">
         <div className="flex items-center justify-between max-w-xl mx-auto w-full gap-4">
           {currentStep > 1 ? (
              <Button variant="ghost" onClick={handlePrevious} className="text-gray-400 hover:text-white hover:bg-white/5 pl-0 pr-4">
@@ -271,7 +399,7 @@ const RegisterHouse = () => {
               Continuer
             </Button>
           ) : (
-            <Button onClick={() => handleSubmit()} className="bg-[#C41E25] hover:bg-[#a0181e] text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-red-900/20" disabled={submitting}>
+            <Button onClick={handleSubmit} className="bg-[#C41E25] hover:bg-[#a0181e] text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-red-900/20" disabled={submitting}>
               {submitting ? "Envoi..." : "Terminer l'inscription"}
             </Button>
           )}
