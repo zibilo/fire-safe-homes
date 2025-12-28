@@ -308,9 +308,23 @@ const RegisterHouse = () => {
   };
 
   const variants = {
-    enter: (direction: number) => ({ x: direction > 0 ? 300 : -300, opacity: 0 }),
-    center: { zIndex: 1, x: 0, opacity: 1 },
-    exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 300 : -300, opacity: 0 }),
+    enter: (direction: number) => ({
+      x: direction > 0 ? 50 : -50,
+      opacity: 0,
+      scale: 0.95,
+    }),
+    center: {
+      zIndex: 1,
+      x: 0,
+      opacity: 1,
+      scale: 1,
+    },
+    exit: (direction: number) => ({
+      zIndex: 0,
+      x: direction < 0 ? 50 : -50,
+      opacity: 0,
+      scale: 0.95,
+    }),
   };
 
   const progressPercentage = (currentStep / totalSteps) * 100;
@@ -348,40 +362,48 @@ const RegisterHouse = () => {
       </div>
 
       {/* CONTENU */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden relative p-6 pb-28">
-        <div className="mb-8 max-w-xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
-             {currentStep === 1 && "Identité du propriétaire"}
-             {currentStep === 2 && "Localisation du bien"}
-             {currentStep === 3 && "Documents techniques"}
-             {currentStep === 4 && "Caractéristiques"}
-             {currentStep === 5 && "Sûreté & Risques"}
-          </h2>
-          <p className="text-sm text-gray-400 flex items-center gap-2">
-             <span className="w-1.5 h-1.5 rounded-full bg-[#C41E25]"></span>
-             Tous les champs marqués d'un * sont obligatoires
-          </p>
-        </div>
+      <div className="flex-grow flex flex-col items-center justify-center overflow-hidden p-6 relative">
+        <div className="w-full max-w-xl">
+          <div className="mb-8 text-center">
+            <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
+               {currentStep === 1 && "Identité du propriétaire"}
+               {currentStep === 2 && "Localisation du bien"}
+               {currentStep === 3 && "Documents techniques"}
+               {currentStep === 4 && "Caractéristiques"}
+               {currentStep === 5 && "Sûreté & Risques"}
+            </h2>
+            <p className="text-sm text-gray-400 flex items-center justify-center gap-2">
+               <span className="w-1.5 h-1.5 rounded-full bg-[#C41E25]"></span>
+               Tous les champs marqués d'un * sont obligatoires
+            </p>
+          </div>
 
-        <div className="max-w-xl mx-auto">
-            <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-                key={currentStep}
-                custom={direction}
-                variants={variants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
-                className="w-full"
-            >
-                {currentStep === 1 && <StepOne formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 2 && <StepTwo formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 3 && <StepThree formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 4 && <StepFour formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 5 && <StepFive formData={formData} updateFormData={updateFormData} />}
-            </motion.div>
-            </AnimatePresence>
+          <div className="relative h-[450px]">
+              <AnimatePresence mode="wait" custom={direction}>
+              <motion.div
+                  key={currentStep}
+                  custom={direction}
+                  variants={variants}
+                  initial="enter"
+                  animate="center"
+                  exit="exit"
+                  transition={{
+                    x: { type: "spring", stiffness: 300, damping: 30 },
+                    opacity: { duration: 0.2 },
+                    scale: { duration: 0.2 },
+                  }}
+                  className="w-full absolute top-0"
+              >
+                  <div className="max-h-[450px] overflow-y-auto pr-4">
+                    {currentStep === 1 && <StepOne formData={formData} updateFormData={updateFormData} />}
+                    {currentStep === 2 && <StepTwo formData={formData} updateFormData={updateFormData} />}
+                    {currentStep === 3 && <StepThree formData={formData} updateFormData={updateFormData} />}
+                    {currentStep === 4 && <StepFour formData={formData} updateFormData={updateFormData} />}
+                    {currentStep === 5 && <StepFive formData={formData} updateFormData={updateFormData} />}
+                  </div>
+              </motion.div>
+              </AnimatePresence>
+          </div>
         </div>
       </div>
 
