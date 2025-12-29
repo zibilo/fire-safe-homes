@@ -8,10 +8,9 @@ import { Label } from "@/components/ui/label";
 import { 
   User, FileText, Home, MapPin, Building, Ruler, 
   Clock, Siren, Bot, Loader2, Sparkles, CheckCircle,
-  Navigation, Map as MapIcon, Copy, Upload, ImagePlus, Eye, Download,
-  type LucideIcon
+  Navigation, Map as MapIcon, Copy, Upload, ImagePlus, Eye, Download
 } from "lucide-react";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -45,28 +44,8 @@ export interface HouseDetails {
   plan_url?: string | null;
   photos_urls?: string[] | string;
   documents_urls?: string[] | string;
-  plan_analysis?: PlanAnalysis;
+  plan_analysis?: any;
   created_at?: string | null;
-}
-
-// --- Interfaces pour les types de données ---
-interface HighRiskZone {
-  name: string;
-  risk_level: number;
-  reason: string;
-}
-
-interface PlanAnalysis {
-  summary?: string;
-  high_risk_zones?: HighRiskZone[];
-  overall_risk_score?: number;
-  operational_report?: Record<string, unknown>;
-  access_points?: Record<string, unknown>;
-}
-
-interface NominatimResult {
-  lat: string;
-  lon: string;
 }
 
 interface HouseDetailsDialogProps {
@@ -103,52 +82,55 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
   const [isUploading, setIsUploading] = useState(false);
   
   const [currentPlanUrl, setCurrentPlanUrl] = useState<string | null>(null);
-  const [currentAnalysis, setCurrentAnalysis] = useState<PlanAnalysis | null>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
 
   const [coordinates, setCoordinates] = useState<{lat: number, lon: number} | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
 
-  const fetchCoordinates = useCallback(async () => {
-    if (!house.city) return;
+  useEffect(() => {
+    if (open) {
+      setCoordinates(null);
+      setCurrentPlanUrl(house.plan_url || null);
+      setCurrentAnalysis(house.plan_analysis);
+      fetchCoordinates();
+    }
+  }, [open, house]);
+
+  const fetchCoordinates = async () => {
     setGeoLoading(true);
     try {
       const city = house.city?.trim() || "";
       const neighborhood = house.neighborhood?.trim() || "";
       const street = house.street?.trim() || house.address?.trim() || "";
       
+      let data: any[] = [];
       const queries = [
         `${street}, ${neighborhood}, ${city}, RÃ©publique du Congo`,
         `${neighborhood}, ${city}, RÃ©publique du Congo`,
         `${city}, RÃ©publique du Congo`
-      ].filter(q => q.replace(", République du Congo", "").trim() !== "");
+      ];
 
       for (const query of queries) {
-        const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
-        const data: NominatimResult[] = await res.json();
+         if (!data || data.length === 0) {
+            if (query.replace(", RÃ©publique du Congo", "").trim() !== "") {
+                const res = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&limit=1`);
+                data = await res.json();
+            }
+         }
+      }
 
-        if (data && data.length > 0) {
-          setCoordinates({
-            lat: parseFloat(data[0].lat),
-            lon: parseFloat(data[0].lon)
-          });
-          return; // Sortir dès qu'on a un résultat
-        }
+      if (data && data.length > 0) {
+        setCoordinates({
+          lat: parseFloat(data[0].lat),
+          lon: parseFloat(data[0].lon)
+        });
       }
     } catch (error) {
       console.error("Erreur gÃ©ocodage:", error);
     } finally {
       setGeoLoading(false);
     }
-  }, [house.city, house.neighborhood, house.street, house.address]);
-
-  useEffect(() => {
-    if (open) {
-      setCoordinates(null);
-      setCurrentPlanUrl(house.plan_url || null);
-      setCurrentAnalysis(house.plan_analysis || null);
-      fetchCoordinates();
-    }
-  }, [open, house, fetchCoordinates]);
+  };
 
   const startNavigation = () => {
     if (!coordinates) {
@@ -211,10 +193,9 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
       setCurrentPlanUrl(newPublicUrl);
       toast.success("Plan tÃ©lÃ©versÃ© avec succÃ¨s !");
       
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Erreur upload:", error);
-      const message = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-      toast.error("Erreur : " + message);
+      toast.error("Erreur : " + error.message);
       setCurrentPlanUrl(house.plan_url || null);
     } finally {
       setIsUploading(false);
@@ -266,13 +247,12 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
       const data = await response.json();
       if (data.error) throw new Error(data.error);
 
-      setCurrentAnalysis(data.analysis as PlanAnalysis);
+      setCurrentAnalysis(data.analysis);
       toast.success("Analyse terminÃ©e !");
       
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Erreur analyse:", error);
-      const message = error instanceof Error ? error.message : "Erreur inconnue";
-      toast.error("Échec de l'analyse : " + message);
+      toast.error("Ã‰chec de l'analyse : " + (error.message || "Erreur inconnue"));
     } finally {
       setAnalyzing(false);
     }
@@ -321,7 +301,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
     return "default";
   };
 
-  const InfoRow = ({ icon: Icon, label, value }: { icon: LucideIcon, label: string, value: string | number | undefined | null }) => (
+  const InfoRow = ({ icon: Icon, label, value }: { icon: any, label: string, value: string | number | undefined | null }) => (
     <div className="flex items-start gap-3 p-2 rounded hover:bg-muted/50">
       <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
       <div>
@@ -536,7 +516,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
                         <p className="text-sm text-muted-foreground">{standardAnalysis.summary}</p>
                       </Card>
                     )}
-                    {standardAnalysis.high_risk_zones?.map((zone, idx) => (
+                    {standardAnalysis.high_risk_zones?.map((zone: any, idx: number) => (
                        <Card key={idx} className="p-3 border-l-4 border-l-orange-500">
                           <div className="flex justify-between"><span className="font-medium">{zone.name}</span><Badge variant="destructive">{zone.risk_level}%</Badge></div>
                           <p className="text-xs text-muted-foreground mt-1">{zone.reason}</p>

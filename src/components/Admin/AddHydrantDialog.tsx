@@ -68,10 +68,9 @@ export function AddHydrantDialog({ onSuccess }: AddHydrantDialogProps) {
             setFlow(''); setLat(''); setLng('');
             onSuccess();
 
-        } catch (error: unknown) {
+        } catch (error: any) {
             console.error(error);
-            const message = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-            toast.error("Erreur: " + message);
+            toast.error("Erreur: " + error.message);
         } finally {
             setLoading(false);
         }

@@ -55,9 +55,6 @@ const logErrorsPlugin = () => ({
 
 // Configuration principale
 export default defineConfig(({ mode }) => ({
-  build: {
-    target: 'es2015'
-  },
   server: {
     host: "::",
     port: 8080,

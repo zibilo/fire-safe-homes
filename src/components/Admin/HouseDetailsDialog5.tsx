@@ -45,41 +45,8 @@ export interface HouseDetails {
   plan_url?: string | null;
   photos_urls?: string[] | string;
   documents_urls?: string[] | string;
-  plan_analysis?: PlanAnalysis;
+  plan_analysis?: any;
   created_at?: string | null;
-}
-
-// Interfaces pour une meilleure typisation
-interface PlanAnalysis {
-  summary?: string;
-  high_risk_zones?: HighRiskZone[];
-  overall_risk_score?: number;
-  operational_report?: OperationalReport;
-  access_points?: AccessPoint[];
-  risk_zones?: RiskZone[];
-  operational_summary?: string;
-}
-
-interface HighRiskZone {
-  name: string;
-  risk_level: number;
-  reason: string;
-}
-
-interface OperationalReport {
-  operational_summary: string;
-  access_points: AccessPoint[];
-  risk_zones: RiskZone[];
-}
-
-interface AccessPoint {
-  id: string;
-  location: string;
-}
-
-interface RiskZone {
-  zone: string;
-  risk: string;
 }
 
 interface HouseDetailsDialogProps {
@@ -102,14 +69,23 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
   
   // État local pour le plan et l'analyse
   const [currentPlanUrl, setCurrentPlanUrl] = useState<string | null>(null);
-  const [currentAnalysis, setCurrentAnalysis] = useState<PlanAnalysis | null>(null);
+  const [currentAnalysis, setCurrentAnalysis] = useState<any>(null);
 
   // --- GÉOCODAGE & NAVIGATION ---
   const [coordinates, setCoordinates] = useState<{lat: number, lon: number} | null>(null);
   const [geoLoading, setGeoLoading] = useState(false);
 
+  useEffect(() => {
+    if (open) {
+      setCoordinates(null);
+      setCurrentPlanUrl(house.plan_url || null);
+      setCurrentAnalysis(house.plan_analysis);
+      fetchCoordinates();
+    }
+  }, [open, house]);
+
   // --- GÉOCODAGE ---
-  const fetchCoordinates = useCallback(async () => {
+  const fetchCoordinates = async () => {
     setGeoLoading(true);
     try {
       const city = house.city?.trim() || "";
@@ -136,16 +112,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
     } finally {
       setGeoLoading(false);
     }
-  }, [house.city, house.neighborhood, house.street, house.address]);
-
-  useEffect(() => {
-    if (open) {
-      setCoordinates(null);
-      setCurrentPlanUrl(house.plan_url || null);
-      setCurrentAnalysis(house.plan_analysis || null);
-      fetchCoordinates();
-    }
-  }, [open, house, fetchCoordinates]);
+  };
 
   const startNavigation = () => {
     if (!coordinates) {
@@ -201,10 +168,9 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
       setCurrentPlanUrl(publicUrl);
       toast.success("Plan prêt pour l'analyse !");
       
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Erreur upload:", error);
-      const message = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-      toast.error("Erreur upload : " + message);
+      toast.error("Erreur upload : " + error.message);
     } finally {
       setIsUploading(false);
     }
@@ -260,13 +226,12 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
       const data = await response.json();
       if (data.error) throw new Error(data.error);
 
-      setCurrentAnalysis(data.analysis as PlanAnalysis);
+      setCurrentAnalysis(data.analysis);
       toast.success("Analyse terminée !");
       
-    } catch (error: unknown) {
+    } catch (error: any) {
       console.error("Erreur analyse:", error);
-      const message = error instanceof Error ? error.message : "Une erreur inconnue est survenue.";
-      toast.error("Échec : " + message);
+      toast.error("Échec : " + error.message);
     } finally {
       setAnalyzing(false);
     }
@@ -482,7 +447,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
                   <Card className="p-4">
                     <p className="text-sm">{standardAnalysis.summary}</p>
                   </Card>
-                  {standardAnalysis.high_risk_zones?.map((zone, i: number) => (
+                  {standardAnalysis.high_risk_zones?.map((zone: any, i: number) => (
                     <Card key={i} className="p-3 border-l-4 border-l-orange-500">
                       <div className="flex justify-between font-medium">
                         <span>{zone.name}</span>
@@ -522,9 +487,9 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
                     <Card className="p-4 border-t-4 border-t-blue-600">
                       <h4 className="font-bold text-blue-800 mb-3">Accès</h4>
                       <ul className="space-y-2 text-sm">
-                        {operationalReport.access_points?.map((acc, i: number) => (
+                        {operationalReport.access_points?.map((acc: any, i: number) => (
                           <li key={i} className="bg-blue-50 p-2 rounded">
-                            <span className="font-bold">{acc.id || `A${i + 1}`}:</span> {acc.location}
+                            <span className="font-bold">{acc.id || `A${i+1}`}:</span> {acc.location}
                           </li>
                         ))}
                       </ul>
@@ -533,7 +498,7 @@ export function HouseDetailsDialog({ house, open, onOpenChange }: HouseDetailsDi
                     <Card className="p-4 border-t-4 border-t-orange-600">
                       <h4 className="font-bold text-orange-800 mb-3">Zones à Risque (ZRA)</h4>
                       <ul className="space-y-2 text-sm">
-                        {operationalReport.risk_zones?.map((zone, i: number) => (
+                        {operationalReport.risk_zones?.map((zone: any, i: number) => (
                           <li key={i} className="bg-orange-50 p-2 rounded flex justify-between">
                             <span className="font-bold">{zone.zone}</span>
                             <span className="text-orange-700">{zone.risk}</span>

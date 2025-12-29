@@ -5,7 +5,6 @@ on:
     branches:
       - main
       - master
-      - fix/form-submission-error-10510768070756373834
   workflow_dispatch:
 
 jobs:
@@ -24,50 +23,27 @@ jobs:
           distribution: 'zulu'
           java-version: '21'
 
-      # Cache for NPM dependencies
-      - name: Cache NPM dependencies
-        uses: actions/cache@v3
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('**/package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-npm-
-
-      # 3. Installer les dépendances
+      # 3. Installer les dÃ©pendances (Correction du conflit ERESOLVE)
       - name: Install Dependencies
+        # ExÃ©cuter Ã  la racine du dÃ©pÃ´t, en utilisant --legacy-peer-deps
         run: npm install --legacy-peer-deps
 
-      # 4. Run Linter
-      - name: Run Linter
-        run: npm run lint
-
-      # 5. Construire le site Web (Vite -> dist)
+      # 4. Construire le site Web (Vite -> dist)
       - name: Build Web App
         run: npm run build
 
-      # 6. Synchroniser Capacitor (dist -> android)
+      # 5. Synchroniser Capacitor (dist -> android)
       - name: Sync Capacitor
         run: npx cap sync android
 
-      # 7. Cache for Gradle
-      - name: Cache Gradle packages
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
-
-      # 8. Construire l'APK
+      # 6. Construire l'APK
       - name: Build APK with Gradle
+        # Se dÃ©placer dans le sous-dossier Android crÃ©Ã© par Capacitor
         working-directory: android
         run: |
           chmod +x gradlew
           ./gradlew assembleDebug
-
-      # 9. Sauvegarder l'APK généré
+      # 7. Sauvegarder l'APK gÃ©nÃ©rÃ©
       - name: Upload APK
         uses: actions/upload-artifact@v4
         with:

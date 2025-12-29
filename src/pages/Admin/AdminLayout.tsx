@@ -115,7 +115,7 @@ const AdminLayout = () => {
           </div>
           <div className="flex items-center gap-4">
             {adminUser && (
-              <div className="hidden sm:block text-sm text-muted-foreground">
+              <div className="hidden md:block text-sm text-muted-foreground">
                 {adminUser.name}
               </div>
             )}
