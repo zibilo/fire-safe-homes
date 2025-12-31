@@ -9,48 +9,46 @@ const Navbar = () => {
   const { user, signOut } = useAuth();
 
   return (
-    // Ligne de bas supprimée : on enlève border-b
-    <nav className="bg-black/90 backdrop-blur supports-[backdrop-filter]:bg-black/80 sticky top-0 z-50">
+    <header className="fixed top-0 left-0 w-full z-50 bg-black/50 backdrop-blur-sm">
       <div className="container mx-auto px-4">
-        <div className="flex h-16 items-center justify-between">
+        <div className="flex h-20 items-center justify-between">
           <Link to="/" className="flex items-center gap-2">
-            <Shield className="h-6 w-6 text-white" strokeWidth={1.5} /> 
-            <span className="font-bold text-xl text-gray-100">118</span>
+            <Shield className="h-7 w-7 text-red-500" strokeWidth={1.5} />
+            <span className="font-bold text-2xl text-white">FireSafe</span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
+          <nav className="hidden md:flex items-center gap-1">
             <NavLink to="/">Accueil</NavLink>
             <NavLink to="/profiles">Profils</NavLink>
             <NavLink to="/blog">Blog</NavLink>
             <NavLink to="/register-house">Enregistrer</NavLink>
-          </div>
+          </nav>
 
           <div className="flex items-center gap-3">
             <NotificationButton />
-
             {user ? (
               <div className="flex items-center gap-3">
-                <span className="text-sm text-gray-400 hidden md:block">
+                <span className="text-sm text-gray-400 hidden sm:block">
                   {user.email}
                 </span>
                 <Button
                   onClick={signOut}
-                  variant="outline"
-                  className="gap-2 bg-gray-800 border-gray-700 hover:bg-gray-700 text-gray-200"
+                  variant="ghost"
+                  size="icon"
+                  className="rounded-full hover:bg-gray-800"
                 >
-                  <LogOut className="h-4 w-4" />
-                  <span className="hidden md:inline">Déconnexion</span>
+                  <LogOut className="h-5 w-5" />
                 </Button>
               </div>
             ) : (
-              <Button asChild className="gradient-fire border-0">
+              <Button asChild variant="outline" className="border-red-500 text-red-500 hover:bg-red-500/10 hover:text-red-400">
                 <Link to="/auth">Connexion</Link>
               </Button>
             )}
           </div>
         </div>
       </div>
-    </nav>
+    </header>
   );
 };
 

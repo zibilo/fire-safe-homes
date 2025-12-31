@@ -1,70 +1,54 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, BookOpen } from "lucide-react";
+import { Home, Users, BookOpen, PlusSquare } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
 
-// Définition des libellés et des chemins
 const navItemsData = [
   { path: "/", label: "Accueil", icon: Home },
   { path: "/profiles", label: "Profils", icon: Users },
-  { path: "/blog", label: "Actus", icon: BookOpen },
+  { path: "/blog", label: "Blog", icon: BookOpen },
+  { path: "/register-house", label: "Enregistrer", icon: PlusSquare },
 ];
 
 const MobileNav = () => {
   const location = useLocation();
 
   return (
-    // Fond sombre uniforme et plus de ligne
-    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md px-4 pb-0 pt-2 safe-area-bottom">
-      
-      <ul className="flex justify-between items-end max-w-md mx-auto w-full h-14"> 
+    <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/80 backdrop-blur-lg border-t border-gray-800 safe-area-bottom">
+      <ul className="flex justify-around items-center h-16">
         {navItemsData.map((item) => {
-          const isActive =
-            item.path === "/"
-              ? location.pathname === "/"
-              : location.pathname.startsWith(item.path);
+          const isActive = location.pathname === item.path;
 
           return (
-            <li key={item.path} className="flex-1 flex justify-center h-full">
+            <li key={item.path} className="flex-1">
               <Link
                 to={item.path}
-                className="flex flex-col items-center justify-end gap-1 w-full relative group p-1"
+                className="flex flex-col items-center justify-center gap-1 w-full h-full relative"
               >
-                {/* Indicateur actif */}
-                {isActive && (
-                  <motion.div
-                    layoutId="nav-active-indicator"
-                    className="absolute top-0 w-8 h-1 bg-[#E54B4B] rounded-b-md shadow-md shadow-[#E54B4B]/50"
-                    initial={false}
-                    transition={{ type: "spring", stiffness: 450, damping: 28 }}
-                  />
-                )}
-
-                {/* Icône */}
-                <div className="relative z-10 mt-2"> 
-                  <item.icon
-                    className={cn(
-                      "w-6 h-6 transition-colors duration-300",
-                      isActive
-                        ? "text-white"
-                        : "text-gray-300 group-hover:text-white"
-                    )}
-                    strokeWidth={isActive ? 2.5 : 2}
-                  />
-                </div>
-
-                {/* Label */}
+                <item.icon
+                  className={cn(
+                    "w-6 h-6 transition-colors",
+                    isActive ? "text-red-500" : "text-gray-400"
+                  )}
+                  strokeWidth={isActive ? 2.5 : 2}
+                />
                 <span
                   className={cn(
-                    "text-[11px] mt-0.5 font-semibold transition-colors duration-300 relative z-10",
-                    isActive 
-                      ? "text-[#E54B4B]" 
-                      : "text-gray-300"
+                    "text-xs font-medium transition-colors",
+                    isActive ? "text-white" : "text-gray-400"
                   )}
                 >
                   {item.label}
                 </span>
 
+                {isActive && (
+                  <motion.div
+                    layoutId="mobile-nav-active-indicator"
+                    className="absolute bottom-0 w-full h-1 bg-red-500"
+                    initial={false}
+                    transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                  />
+                )}
               </Link>
             </li>
           );
