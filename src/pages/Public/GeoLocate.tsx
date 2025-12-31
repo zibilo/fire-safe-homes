@@ -1,449 +1,401 @@
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import {
-  MapPin,
-  CheckCircle,
-  Loader2,
-  Send,
-  ArrowLeft,
-  Radio,
+import { 
+  MapPin, 
+  AlertTriangle, 
+  Loader2, 
+  Send, 
+  ChevronLeft, 
+  RefreshCcw,
   ShieldAlert,
-  Siren,
-  HelpCircle,
-  Volume2
+  Satellite,
+  WifiOff
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { toast } from 'sonner';
 
-const EMERGENCY_PHONE_NUMBER = '118';
+const EMERGENCY_PHONE_NUMBER = "+242065119788";
 
-const containerAnim = {
-  hidden: { opacity: 0, scale: 0.96 },
-  visible: { opacity: 1, scale: 1, transition: { duration: 0.4 } },
-  exit: { opacity: 0, scale: 0.96 }
-};
-
-const stateAnim = {
-  hidden: { opacity: 0, y: 20 },
-  visible: { opacity: 1, y: 0, transition: { duration: 0.3 } },
-  exit: { opacity: 0, y: -10 }
+// Niveaux de qualité du signal satellite
+const getSignalQuality = (accuracy: number): { level: number; text: string; color: string } => {
+  if (accuracy <= 10) return { level: 4, text: 'Excellent', color: 'text-emerald-500' };
+  if (accuracy <= 30) return { level: 3, text: 'Bon', color: 'text-green-500' };
+  if (accuracy <= 100) return { level: 2, text: 'Moyen', color: 'text-yellow-500' };
+  return { level: 1, text: 'Faible', color: 'text-red-500' };
 };
 
 const GeoLocate = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-
+  
+  // États de l'application
   const [smsLink, setSmsLink] = useState('');
-  const [status, setStatus] = useState<'idle' | 'locating' | 'success' | 'error' | 'sms-fallback'>('idle');
+  const [status, setStatus] = useState<'idle' | 'locating' | 'sms-ready' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [tempCoords, setTempCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
+  const [attempts, setAttempts] = useState(0);
   
-  // --- ÉTATS DU WIDGET AUDIO ---
-  const [isAudioWidgetOpen, setIsAudioWidgetOpen] = useState(false);
-  const [isMenuVisible, setIsMenuVisible] = useState(false);
-  
-  // Chemins d'audio de démo
-  const audioRefFr = useRef(new Audio("/3/téléchargement (11).wav")); 
-  const audioRefKit = useRef(new Audio("/3/téléchargement (15).wav")); 
-  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
+  const watchIdRef = useRef<number | null>(null);
+  const bestPositionRef = useRef<GeolocationPosition | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // LOGIQUE 1 : Arrêter l'audio au DÉMONTAGE du composant (CLEANUP)
+  // Détection mode hors ligne
+  useEffect(() => {
+    const handleOnline = () => setIsOffline(false);
+    const handleOffline = () => setIsOffline(true);
+    
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('offline', handleOffline);
+    
+    return () => {
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('offline', handleOffline);
+    };
+  }, []);
+
+  // Nettoyage au démontage
   useEffect(() => {
     return () => {
-      stopAllAudio(); 
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
     };
-  }, []); 
+  }, []);
 
-
-  // LOGIQUE 2 : TRANSITION D'ENTRÉE/SORTIE (Widget Audio)
+  // SÉCURITÉ : Réinitialiser les données au chargement du composant
   useEffect(() => {
-    if (isAudioWidgetOpen) {
-      setIsMenuVisible(true);
-    } else {
-      // Utilisé 250ms pour être sûr que l'animation de 0.2s se termine
-      const timer = setTimeout(() => { 
-        setIsMenuVisible(false);
-      }, 250); 
-      return () => clearTimeout(timer);
-    }
-  }, [isAudioWidgetOpen]);
-
-  const toggleAudioWidget = () => {
-    if (isAudioWidgetOpen) {
-      stopAllAudio();
-    }
-    setIsAudioWidgetOpen(!isAudioWidgetOpen);
-  };
-  
-  const stopAllAudio = () => {
-    audioRefFr.current.pause();
-    audioRefFr.current.currentTime = 0;
-    audioRefKit.current.pause();
-    audioRefKit.current.currentTime = 0;
-    setCurrentlyPlaying(null);
-  };
-
-  const playAudio = (language) => {
-    stopAllAudio(); 
-
-    let audioToPlay;
-    let newPlayingState;
-
-    if (language === 'fr') {
-      audioToPlay = audioRefFr.current;
-      newPlayingState = 'fr';
-    } else if (language === 'kit') {
-      audioToPlay = audioRefKit.current;
-      newPlayingState = 'kit';
-    } else {
-      return; 
-    }
-
-    // Tente de charger et jouer l'audio
-    audioToPlay.load(); 
-    audioToPlay.play()
-      .then(() => {
-        setCurrentlyPlaying(newPlayingState);
-        audioToPlay.onended = () => {
-          setCurrentlyPlaying(null);
-        };
-      })
-      .catch(error => {
-        console.error(`Erreur de lecture audio pour ${language}:`, error);
-        toast.error("Échec de la lecture audio. Veuillez cliquer à nouveau ou vérifier les paramètres de média.");
-        setCurrentlyPlaying(null);
-      });
-  };
-  // --- FIN LOGIQUE WIDGET AUDIO ---
-
-  
-  // =========================================================================
-  // FONCTION HANDLELOCATE CORRIGÉE (ALIGNEMENT RPC)
-  // =========================================================================
-  const handleLocate = () => {
-    setStatus('locating');
+    setStatus('idle');
+    setSmsLink('');
     setErrorMsg('');
+    setAccuracy(null);
+    setCoordinates(null);
+    setAttempts(0);
+    bestPositionRef.current = null;
+  }, [id]);
+
+  const finalizeSMS = useCallback((position: GeolocationPosition) => {
+    const { latitude, longitude, accuracy: acc } = position.coords;
+    const precision = Math.round(acc);
+    
+    // URL format compatible hors ligne (pas de dépendance réseau)
+    const mapUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+    const message = `URGENCE POMPIERS - Ma position GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} - Carte: ${mapUrl} (Précision: ${precision}m). Réf: ${id || 'N/A'}`;
+    
+    const link = `sms:${EMERGENCY_PHONE_NUMBER}?body=${encodeURIComponent(message)}`;
+    
+    setSmsLink(link);
+    setStatus('sms-ready');
+    setAccuracy(precision);
+    setCoordinates({ lat: latitude, lng: longitude });
+    
+    toast.success(`Position captée ! Précision: ${precision}m`);
+
+    // Redirection auto vers SMS
+    window.location.href = link;
+  }, [id]);
+
+  const handleLocate = useCallback(() => {
+    setStatus('locating');
+    setErrorMsg("");
+    setAttempts(0);
+    bestPositionRef.current = null;
 
     if (!navigator.geolocation) {
       setStatus('error');
-      setErrorMsg('Géolocalisation non supportée par votre navigateur.');
+      setErrorMsg("La géolocalisation n'est pas supportée par cet appareil.");
       return;
     }
 
-    navigator.geolocation.getCurrentPosition(
-        async (position) => {
-            const { latitude, longitude, accuracy } = position.coords;
-            setTempCoords({ lat: latitude, lng: longitude });
+    // Nettoyer les anciens watchers
+    if (watchIdRef.current !== null) {
+      navigator.geolocation.clearWatch(watchIdRef.current);
+    }
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
 
-            // Si déconnecté, on active immédiatement le mode SMS
-            if (!navigator.onLine) {
-                console.warn("RÉSEAU : Aucune connexion Internet détectée. Activation du mode SMS.");
-                triggerSMSFallback(latitude, longitude, accuracy);
-                return;
-            }
+    // Options optimisées pour GPS satellite (hors ligne)
+    const geoOptions: PositionOptions = {
+      enableHighAccuracy: true, // Force le GPS satellite (pas WiFi/Cell)
+      timeout: 60000,           // 60 secondes pour acquisition satellite
+      maximumAge: 0             // Toujours une nouvelle position
+    };
 
-            // --- TENTATIVE DE TRANSMISSION SUPABASE AVEC DÉBOGAGE ---
-            try {
-                // 1. Définition du RPC et du Timeout (15s)
-                const rpcPromise = supabase.rpc('update_victim_location', {
-                    // C'est la CORRECTION : ALIGNEMENT AVEC LES NOMS p_ DANS LA FONCTION SQL
-                    p_request_id: id || 'urgence-anonyme',
-                    p_lat: latitude,
-                    p_lng: longitude,
-                    p_acc: accuracy
-                });
+    // Utiliser watchPosition pour améliorer la précision progressivement
+    const watchId = navigator.geolocation.watchPosition(
+      (position) => {
+        setAttempts(prev => prev + 1);
+        const currentAccuracy = position.coords.accuracy;
+        setAccuracy(Math.round(currentAccuracy));
+        setCoordinates({ lat: position.coords.latitude, lng: position.coords.longitude });
 
-                const timeoutPromise = new Promise((_, reject) =>
-                    // Utilisez un objet Error pour que le 'catch' puisse le différencier
-                    setTimeout(() => reject(new Error('TIMEOUT_ERROR')), 15000) 
-                );
+        // Garder la meilleure position
+        if (!bestPositionRef.current || currentAccuracy < bestPositionRef.current.coords.accuracy) {
+          bestPositionRef.current = position;
+        }
 
-                console.log("Supabase RPC : Tentative d'envoi des coordonnées...");
-
-                // 2. Course entre le RPC et le Timeout
-                const result = await Promise.race([rpcPromise, timeoutPromise]) as any;
-                
-                // 3. Gestion de l'erreur Supabase (si l'API a répondu)
-                if (result && result.error) {
-                    // C'est l'erreur que nous cherchons ! Elle vient de la BDD ou des permissions.
-                    console.error("❌ ÉCHEC RPC SUPABASE (Erreur Serveur/BDD) :", result.error);
-                    throw result.error; // Renvoie l'erreur au catch
-                }
-                
-                // 4. Succès
-                setStatus('success');
-                toast.success('Position transmise au QG.');
-                console.log(`✅ SUCCÈS : Coordonnées (${latitude.toFixed(5)}, ${longitude.toFixed(5)}) envoyées.`);
-
-            } catch (error) {
-                // 5. Gestion des erreurs (Timeout ou Erreur Supabase)
-                console.error("Capture Catch :", error);
-
-                if (error && error.message === 'TIMEOUT_ERROR') {
-                    console.warn("⌛ ÉCHEC : Le délai de 15 secondes est dépassé (Timeout).");
-                    toast.info('Transmission trop lente. Mode SMS activé.');
-                } else {
-                    // Si ce n'est pas un timeout, c'est l'erreur BDD/RPC remontée ci-dessus.
-                    console.error("❌ ÉCHEC : Erreur réseau ou BDD non résolue. Activation du mode SMS.");
-                    // Affichons l'erreur BDD/RPC pour le débogage si elle est présente
-                    const errorMessage = error.message.includes('DB_ERROR') 
-                      ? `Erreur BDD: ${error.message.split('DB_ERROR: ')[1]}` 
-                      : 'Erreur inconnue.';
-                    
-                    toast.info('Erreur de transmission. Mode SMS activé.');
-                }
-                
-                // Active le mode de secours dans tous les cas d'échec de la transmission RPC
-                triggerSMSFallback(latitude, longitude, accuracy);
-            }
-        },
-        // --- GESTION DES ERREURS DE GÉOLOCALISATION ---
-        (err) => {
-            setStatus('error');
-            let codeMsg = 'Erreur technique inconnue.';
-            if (err.code === 1) codeMsg = 'Autorisation GPS refusée (Veuillez l\'activer dans les paramètres).';
-            else if (err.code === 2) codeMsg = 'Signal GPS introuvable (Vérifiez votre couverture).';
-            else if (err.code === 3) codeMsg = 'Temps GPS dépassé (Connexion satellite trop longue).';
-            
-            console.error(`❌ ÉCHEC Géolocalisation (Code ${err.code}) : ${codeMsg}`);
-            setErrorMsg(codeMsg);
-            toast.error("Échec de la géolocalisation. Réessayez.");
-        },
-        { enableHighAccuracy: true, timeout: 30000 }
+        // Si précision excellente (< 15m), finaliser immédiatement
+        if (currentAccuracy <= 15) {
+          navigator.geolocation.clearWatch(watchId);
+          watchIdRef.current = null;
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+          finalizeSMS(position);
+        }
+      },
+      (err) => {
+        console.error("Erreur GPS:", err);
+        navigator.geolocation.clearWatch(watchId);
+        watchIdRef.current = null;
+        if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        
+        // Si on a une position, même imprécise, l'utiliser
+        if (bestPositionRef.current) {
+          finalizeSMS(bestPositionRef.current);
+          return;
+        }
+        
+        setStatus('error');
+        if (err.code === 1) {
+          setErrorMsg("Accès GPS refusé. Activez la localisation dans les paramètres de votre appareil.");
+        } else if (err.code === 2) {
+          setErrorMsg("Signal satellite introuvable. Sortez à l'extérieur avec une vue dégagée du ciel.");
+        } else if (err.code === 3) {
+          setErrorMsg("Délai dépassé. Assurez-vous d'être à l'extérieur avec une vue du ciel.");
+        } else {
+          setErrorMsg("Erreur technique de localisation.");
+        }
+      },
+      geoOptions
     );
-  };
-  // =========================================================================
-  // FIN FONCTION HANDLELOCATE CORRIGÉE
-  // =========================================================================
 
-  const triggerSMSFallback = (lat, lng, acc) => {
-    const message = `SOS ${lat},${lng} (±${Math.round(acc)}m) ID:${id || '?'}`;
-    setSmsLink(`sms:${EMERGENCY_PHONE_NUMBER}?body=${encodeURIComponent(message)}`);
-    setStatus('sms-fallback');
+    watchIdRef.current = watchId;
+
+    // Timeout de sécurité : après 45 secondes, utiliser la meilleure position disponible
+    timeoutRef.current = setTimeout(() => {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      
+      if (bestPositionRef.current) {
+        finalizeSMS(bestPositionRef.current);
+      } else if (status === 'locating') {
+        setStatus('error');
+        setErrorMsg("Impossible de capter le signal satellite. Essayez à l'extérieur.");
+      }
+    }, 45000);
+  }, [finalizeSMS, status]);
+
+  // Composant indicateur de signal satellite
+  const SignalIndicator = ({ accuracy: acc }: { accuracy: number | null }) => {
+    if (acc === null) return null;
+    const quality = getSignalQuality(acc);
+    
+    return (
+      <div className="flex items-center gap-2 bg-slate-800/50 px-3 py-2 rounded-lg">
+        <Satellite className={`w-5 h-5 ${quality.color}`} />
+        <div className="flex gap-0.5">
+          {[1, 2, 3, 4].map((level) => (
+            <div
+              key={level}
+              className={`w-1.5 rounded-full transition-all ${
+                level <= quality.level ? quality.color.replace('text-', 'bg-') : 'bg-slate-700'
+              }`}
+              style={{ height: `${8 + level * 4}px` }}
+            />
+          ))}
+        </div>
+        <span className={`text-xs font-medium ${quality.color}`}>
+          {quality.text} ({acc}m)
+        </span>
+      </div>
+    );
   };
 
   return (
-    <div className="fixed inset-0 flex items-center justify-center px-4 bg-neutral-950 text-neutral-100 overflow-auto">
-      
-      {/* RETOUR (Haut Gauche) */}
-      <div className="fixed top-4 left-4 z-30">
-        <Button
-          onClick={() => navigate(-1)}
-          variant="outline"
-          size="icon"
-          className="border-red-800 text-red-500 hover:bg-red-900/30"
-        >
-          <ArrowLeft />
-        </Button>
-      </div>
-
-      {/* ===== WIDGET AIDE AUDIO (Centré H et Menu en dessous) ===== */}
-      <div className="fixed top-4 z-40 left-1/2 -translate-x-1/2"> 
-        <AnimatePresence>
-          <div className="relative"> 
-              
-              {/* Bouton HelpCircle (?) (le déclencheur) */}
-              <Button
-              onClick={toggleAudioWidget}
-              className="h-10 w-10 p-0 rounded-full bg-red-900/40 border border-red-700 hover:bg-red-900/60 transition-colors duration-300 shadow-md shadow-red-900/50"
-              title="Aide Vocale"
-              >
-              <HelpCircle className="h-6 w-6 text-red-500" /> 
-              </Button>
-
-              {/* Conteneur des options audio (Menu déroulant - UTILISATION DE FRAMER MOTION) */}
-              {isMenuVisible && (
-              <motion.div 
-                  initial={{ opacity: 0, scale: 0.9, y: -8 }}
-                  animate={{ opacity: 1, scale: 1, y: 0 }}
-                  exit={{ opacity: 0, scale: 0.9, y: -8 }}
-                  transition={{ duration: 0.2 }}
-                  className={`
-                  absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col p-2 
-                  bg-neutral-900 rounded-lg shadow-2xl space-y-1 
-                  border border-red-900/70 min-w-[150px]
-                  `}
-              >
-                  <p className="text-xs font-semibold text-red-400 mb-1 text-center">Guide Audio</p>
-                  
-                  {/* Bouton Français */}
-                  <Button
-                  onClick={() => playAudio('fr')}
-                  className={`
-                      w-full justify-start h-8 text-sm transition rounded
-                      ${currentlyPlaying === 'fr' ? 'bg-red-700 hover:bg-red-600' : 'bg-neutral-800 hover:bg-neutral-700'}
-                  `}
-                  >
-                  <Volume2 className={`mr-2 h-4 w-4 ${currentlyPlaying === 'fr' ? 'text-white' : 'text-gray-400'}`} />
-                  Français (FR)
-                  </Button>
-                  
-                  {/* Bouton Kituba/Kinkogo */}
-                  <Button
-                  onClick={() => playAudio('kit')}
-                  className={`
-                      w-full justify-start h-8 text-sm transition rounded
-                      ${currentlyPlaying === 'kit' ? 'bg-red-700 hover:bg-red-600' : 'bg-neutral-800 hover:bg-neutral-700'}
-                  `}
-                  >
-                  <Volume2 className={`mr-2 h-4 w-4 ${currentlyPlaying === 'kit' ? 'text-white' : 'text-gray-400'}`} />
-                  Kituba (KTB)
-                  </Button>
-                  
-                  {/* Bouton Arrêter tout (TOUJOURS PRÉSENT) */}
-                  <Button
-                      onClick={stopAllAudio}
-                      variant="ghost"
-                      className={`
-                          w-full h-6 text-xs mt-1 transition
-                          ${currentlyPlaying ? 'text-red-400 hover:bg-red-900/50' : 'text-gray-600 cursor-default hover:bg-transparent'}
-                      `}
-                      disabled={!currentlyPlaying}
-                  >
-                      Arrêter la lecture
-                  </Button>
-                  
-              </motion.div>
-              )}
-          </div>
-        </AnimatePresence>
-      </div>
-      {/* ===== FIN WIDGET AIDE AUDIO ===== */}
-
-      {/* CONTAINER */}
-      <motion.div
-        variants={containerAnim}
-        initial="hidden"
-        animate="visible"
-        exit="exit"
-        className="w-full max-w-md bg-neutral-900 border border-red-900/70 rounded-xl shadow-2xl shadow-red-900/50 p-8"
-      >
-        {/* HEADER */}
-        <div className="flex justify-center mb-6">
-          <motion.div
-            animate={{ rotate: [0, -10, 10, -10, 0] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="bg-red-900/40 p-4 rounded-full border border-red-700 shadow-lg shadow-red-900/60"
-          >
-            <Siren className="h-10 w-10 text-red-500" />
-          </motion.div>
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center justify-center p-4">
+      {/* Indicateur hors ligne */}
+      {isOffline && (
+        <div className="absolute top-6 right-6 flex items-center gap-2 bg-amber-500/20 text-amber-400 px-3 py-1.5 rounded-full text-xs font-medium">
+          <WifiOff className="w-4 h-4" />
+          Mode Hors Ligne
         </div>
+      )}
 
-        <h1 className="text-center text-red-500 font-extrabold tracking-widest">
-          CENTRE D’URGENCE POMPIERS
-        </h1>
-        <p className="text-xs text-neutral-400 text-center mt-1 uppercase">
-          Transmission prioritaire sécurisée
-        </p>
+      {/* Bouton Retour en haut à gauche */}
+      <button 
+        onClick={() => navigate(-1)}
+        className="absolute top-6 left-6 flex items-center text-slate-400 hover:text-white transition-colors"
+      >
+        <ChevronLeft className="w-5 h-5 mr-1" />
+        Retour
+      </button>
 
-        {/* ÉTATS */}
-        <AnimatePresence mode="wait">
+      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        {/* Décoration d'arrière-plan discrète */}
+        <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600/10 rounded-full blur-3xl"></div>
+
+        <div className="flex flex-col items-center text-center">
+          <div className="bg-red-500/20 p-4 rounded-2xl mb-6 shadow-inner">
+            <ShieldAlert className="w-10 h-10 text-red-500" />
+          </div>
+
+          <h1 className="text-2xl font-black text-white tracking-tight mb-1 uppercase">
+            Alerte Secours
+          </h1>
+          <p className="text-slate-400 text-sm mb-2">
+            Transmission de coordonnées GPS
+          </p>
+          
+          {/* Indicateur mode hors ligne */}
+          {isOffline && (
+            <p className="text-amber-400 text-xs mb-4 flex items-center gap-1">
+              <Satellite className="w-3 h-3" />
+              GPS Satellite actif (fonctionne sans internet)
+            </p>
+          )}
+
+          {/* ÉTAT : INITIAL */}
           {status === 'idle' && (
-            <motion.div
-              key="idle"
-              variants={stateAnim}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="mt-8"
-            >
-              <div className="bg-neutral-800/60 border border-neutral-700 rounded-lg p-4 text-sm mb-6">
-                Procédure officielle :
-                <br />• Autoriser la localisation
-                <br />• Ne pas fermer l’application
-                <br />• Transmission automatique
+            <div className="w-full space-y-6 mt-4">
+              <div className="bg-slate-800/50 rounded-xl p-4 text-left border border-slate-700/50">
+                <p className="text-xs text-slate-500 uppercase font-bold mb-2">Instructions</p>
+                <ul className="text-sm text-slate-300 space-y-2">
+                  <li className="flex items-start">
+                    <span className="bg-red-500 h-2 w-2 rounded-full mt-1.5 mr-2 shrink-0"></span>
+                    Autorisez l'accès GPS si demandé.
+                  </li>
+                  <li className="flex items-start">
+                    <span className="bg-red-500 h-2 w-2 rounded-full mt-1.5 mr-2 shrink-0"></span>
+                    Sortez à l'extérieur pour une meilleure réception.
+                  </li>
+                  <li className="flex items-start">
+                    <span className="bg-red-500 h-2 w-2 rounded-full mt-1.5 mr-2 shrink-0"></span>
+                    Le SMS s'ouvrira automatiquement.
+                  </li>
+                  <li className="flex items-start">
+                    <span className="bg-emerald-500 h-2 w-2 rounded-full mt-1.5 mr-2 shrink-0"></span>
+                    Fonctionne sans connexion Internet.
+                  </li>
+                </ul>
               </div>
 
-              <Button
-                onClick={handleLocate}
-                className="w-full h-16 bg-red-700 hover:bg-red-800 text-lg font-bold shadow-xl shadow-red-900/70 animate-pulse"
+              <Button 
+                onClick={handleLocate} 
+                className="w-full bg-red-600 hover:bg-red-500 text-white h-20 rounded-2xl text-xl font-bold transition-all hover:scale-[1.02] active:scale-95 shadow-[0_0_20px_rgba(220,38,38,0.4)]"
               >
-                <MapPin className="mr-2" />
-                ENVOYER MA POSITION
+                <MapPin className="mr-3 h-6 w-6" /> LOCALISER MOI
               </Button>
-            </motion.div>
+            </div>
           )}
 
+          {/* ÉTAT : RECHERCHE EN COURS */}
           {status === 'locating' && (
-            <motion.div
-              key="locating"
-              variants={stateAnim}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="mt-8 text-center"
-            >
-              <Loader2 className="h-12 w-12 animate-spin text-red-500 mx-auto mb-4" />
-              <p className="font-semibold">Localisation en cours…</p>
-              <p className="text-xs text-neutral-400 mt-2">
-                Connexion satellite
+            <div className="py-6 flex flex-col items-center w-full">
+              <div className="relative mb-4">
+                <div className="absolute inset-0 rounded-full bg-red-600/20 animate-ping"></div>
+                <Loader2 className="w-16 h-16 animate-spin text-red-500 relative z-10" />
+              </div>
+              
+              {/* Indicateur de signal en temps réel */}
+              {accuracy !== null && <SignalIndicator accuracy={accuracy} />}
+              
+              <p className="mt-4 text-white font-medium animate-pulse">
+                Recherche du signal satellite...
               </p>
-            </motion.div>
+              <p className="text-xs text-slate-500 mt-2 italic">
+                {attempts > 0 ? `${attempts} lecture(s) - Amélioration en cours...` : 'Restez immobile à l\'extérieur'}
+              </p>
+              
+              {coordinates && (
+                <p className="text-xs text-slate-600 mt-2 font-mono">
+                  {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+                </p>
+              )}
+              
+              {/* Bouton pour forcer la finalisation */}
+              {accuracy !== null && accuracy > 15 && (
+                <button
+                  onClick={() => bestPositionRef.current && finalizeSMS(bestPositionRef.current)}
+                  className="mt-4 text-sm text-slate-400 hover:text-white underline"
+                >
+                  Utiliser la position actuelle ({accuracy}m)
+                </button>
+              )}
+            </div>
           )}
 
-          {status === 'success' && tempCoords && (
-            <motion.div
-              key="success"
-              variants={stateAnim}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="mt-8 bg-emerald-900/20 border border-emerald-700 rounded-lg p-6 text-center"
-            >
-              <CheckCircle className="h-14 w-14 text-emerald-500 mx-auto mb-3" />
-              <p className="font-bold text-emerald-400 uppercase">
-                Position validée
-              </p>
-              <p className="text-xs text-neutral-300 mt-2 font-mono">
-                {tempCoords.lat.toFixed(5)} / {tempCoords.lng.toFixed(5)}
-              </p>
-              <p className="text-xs text-neutral-400 mt-4">
-                Les secours sont en route
-              </p>
-            </motion.div>
-          )}
+          {/* ÉTAT : SMS PRÊT */}
+          {status === 'sms-ready' && (
+            <div className="w-full space-y-4 py-4 animate-in slide-in-from-bottom-4 duration-500">
+              <div className="bg-emerald-500/10 border border-emerald-500/20 py-3 rounded-lg">
+                <p className="text-emerald-500 font-bold text-sm uppercase">Position Verrouillée</p>
+                {accuracy !== null && <SignalIndicator accuracy={accuracy} />}
+              </div>
+              
+              {coordinates && (
+                <div className="bg-slate-800/50 rounded-lg p-3 text-left">
+                  <p className="text-xs text-slate-500 mb-1">Coordonnées GPS</p>
+                  <p className="text-sm text-white font-mono">
+                    {coordinates.lat.toFixed(6)}, {coordinates.lng.toFixed(6)}
+                  </p>
+                </div>
+              )}
 
-          {status === 'sms-fallback' && (
-            <motion.div
-              key="sms"
-              variants={stateAnim}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="mt-8 bg-amber-900/20 border border-amber-700 rounded-lg p-6 text-center"
-            >
-              <Radio className="h-12 w-12 text-amber-500 mx-auto mb-3" />
-              <p className="font-bold text-amber-400">
-                Mode SMS d’urgence
-              </p>
-
-              <a href={smsLink} className="block mt-4">
-                <Button className="w-full h-16 bg-red-700 hover:bg-red-800 text-lg font-bold shadow-xl shadow-red-900/60">
-                  <Send className="mr-2" />
-                  ENVOYER LE SMS
+              <a href={smsLink} className="block w-full">
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-500 h-20 text-xl font-black rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                  <Send className="mr-3 w-6 h-6" /> ENVOYER LE SMS
                 </Button>
               </a>
-            </motion.div>
+
+              <button 
+                onClick={handleLocate}
+                className="flex items-center justify-center w-full py-3 text-slate-400 text-sm hover:text-white transition-colors"
+              >
+                <RefreshCcw className="w-4 h-4 mr-2" /> 
+                Actualiser la position
+              </button>
+            </div>
           )}
 
+          {/* ÉTAT : ERREUR */}
           {status === 'error' && (
-            <motion.div
-              key="error"
-              variants={stateAnim}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
-              className="mt-8 bg-red-900/20 border border-red-700 rounded-lg p-6 text-center"
-            >
-              <ShieldAlert className="h-12 w-12 text-red-500 mx-auto mb-3" />
-              <p className="font-bold text-red-400">Erreur de localisation</p>
-              <p className="text-xs text-neutral-300 mt-2">{errorMsg}</p>
-            </motion.div>
+            <div className="w-full py-4 animate-in zoom-in-95 duration-300">
+              <div className="bg-red-500/10 border border-red-500/20 p-4 rounded-2xl mb-6">
+                <AlertTriangle className="w-10 h-10 text-red-500 mx-auto mb-2" />
+                <p className="text-red-200 text-sm">{errorMsg}</p>
+              </div>
+              
+              <div className="bg-slate-800/50 rounded-xl p-4 text-left border border-slate-700/50 mb-4">
+                <p className="text-xs text-slate-500 uppercase font-bold mb-2">Conseils GPS</p>
+                <ul className="text-xs text-slate-400 space-y-1">
+                  <li>• Allez à l'extérieur avec vue du ciel</li>
+                  <li>• Éloignez-vous des bâtiments hauts</li>
+                  <li>• Attendez 30 secondes immobile</li>
+                  <li>• Activez la localisation haute précision</li>
+                </ul>
+              </div>
+              
+              <Button 
+                onClick={handleLocate} 
+                variant="outline" 
+                className="w-full border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl"
+              >
+                Réessayer
+              </Button>
+            </div>
           )}
-        </AnimatePresence>
-      </motion.div>
+        </div>
+      </div>
+      
+      <p className="mt-8 text-slate-600 text-[10px] uppercase tracking-widest font-bold">
+        Système d'Alerte Géolocalisé v3.0 • GPS Satellite
+      </p>
     </div>
   );
 };
