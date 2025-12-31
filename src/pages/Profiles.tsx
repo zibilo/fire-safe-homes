@@ -133,86 +133,136 @@ const Profiles = () => {
      Render
   ======================= */
   return (
-    <div className="bg-black text-white min-h-screen">
-      <div className="container mx-auto px-4 pt-24 pb-24">
-        <header className="mb-8">
-          <h1 className="text-4xl font-extrabold tracking-tighter mb-2">
-            Communauté FireSafe
-          </h1>
-          <p className="text-gray-400">
-            {loading ? "Chargement des membres..." : `${profiles.length} membres protègent leur communauté.`}
-          </p>
-          <div className="relative mt-6 max-w-lg">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-500" />
-            <input
-              value={searchTerm}
-              onChange={e => setSearchTerm(e.target.value)}
-              placeholder="Chercher un membre par nom ou quartier..."
-              className="w-full bg-gray-900/80 border border-gray-700 rounded-full py-3 pl-12 pr-10 text-base text-white placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-red-500"
-            />
-            {searchTerm && (
-              <button
-                onClick={() => setSearchTerm("")}
-                className="absolute right-4 top-1/2 -translate-y-1/2 p-1"
-              >
-                <X className="w-4 h-4 text-gray-400" />
-              </button>
-            )}
-          </div>
-        </header>
+    <div className="h-screen bg-black text-white overflow-hidden relative">
 
-        <main>
-          {loading ? (
-            <div className="flex justify-center py-20">
-              <div className="animate-spin h-10 w-10 border-t-2 border-b-2 border-red-500 rounded-full" />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
-              <AnimatePresence>
-                {filteredProfiles.length ? (
-                  filteredProfiles.map((profile, index) => (
-                    <motion.div
-                      key={profile.id}
-                      variants={itemVariants}
-                      initial="hidden"
-                      animate="show"
-                      exit="hidden"
-                      transition={{ delay: index * 0.05, type: "spring", stiffness: 100 }}
-                      className="bg-gray-900/70 rounded-2xl p-4 border border-gray-800 hover:border-red-500/50 transition-colors"
-                    >
-                      <div className="flex flex-col items-center text-center">
-                        <Avatar className="h-20 w-20 mb-4 border-4 border-gray-700">
-                          <AvatarImage src={profile.avatar_url || undefined} />
-                          <AvatarFallback className="bg-gray-800 text-lg">
-                            {profile.name.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
-                        <h3 className="font-bold text-lg truncate w-full">
+      {/* ===================== HEADER ===================== */}
+      <motion.header
+        initial={{ transform: "translateZ(0)" }}
+        className="fixed top-0 left-0 right-0 z-30 bg-black/80 backdrop-blur-md border-b border-white/5 px-6 py-4 pb-6"
+        style={{ height: HEADER_HEIGHT }}
+      >
+        <div className="flex justify-between items-center mb-4">
+          <div>
+            <h1 className="text-2xl font-bold">Communauté</h1>
+            <p className="text-xs text-gray-400">
+              {loading
+                ? "Chargement..."
+                : `${profiles.length} membres enregistrés`}
+            </p>
+          </div>
+
+          <div className="w-10 h-10 bg-[#151515] rounded-full flex items-center justify-center border border-white/10">
+            <Users className="w-5 h-5 text-[#C41E25]" />
+          </div>
+        </div>
+
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+          <input
+            value={searchTerm}
+            onChange={e => setSearchTerm(e.target.value)}
+            placeholder="Chercher par nom, quartier..."
+            className="w-full bg-[#121212] border border-white/5 rounded-xl py-3 pl-10 pr-10 text-sm text-white placeholder:text-gray-600 focus:outline-none"
+          />
+          {searchTerm && (
+            <button
+              onClick={() => setSearchTerm("")}
+              className="absolute right-3 top-1/2 -translate-y-1/2 p-1"
+            >
+              <X className="w-3 h-3 text-gray-400" />
+            </button>
+          )}
+        </div>
+      </motion.header>
+
+      {/* ===================== MAIN (SCROLL) ===================== */}
+      <main
+        className="absolute left-0 right-0 overflow-y-auto px-4 pt-6 pb-28"
+        style={{
+          top: HEADER_HEIGHT,
+          bottom: NAVBAR_HEIGHT
+        }}
+      >
+        {loading ? (
+          <div className="flex justify-center py-12">
+            <div className="animate-spin h-8 w-8 border-t-2 border-b-2 border-[#C41E25] rounded-full" />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <AnimatePresence>
+              {filteredProfiles.length ? (
+                filteredProfiles.map((profile, index) => (
+                  <motion.div
+                    key={profile.id}
+                    variants={itemVariants}
+                    initial="hidden"
+                    animate="show"
+                    exit="hidden"
+                    transition={{ delay: index * 0.05 }}
+                    className="bg-[#151515] rounded-2xl p-4 border border-white/5"
+                  >
+                    <div className="flex gap-4">
+                      <Avatar className="h-14 w-14">
+                        <AvatarImage src={profile.avatar_url || undefined} />
+                        <AvatarFallback>
+                          {profile.name.charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+
+                      <div className="flex-1">
+                        <h3 className="font-semibold truncate">
                           {profile.name}
                         </h3>
-                        <p className="text-sm text-red-500 mb-2">
+                        <p className="text-xs text-[#C41E25] mb-1">
                           {profile.role}
                         </p>
-                        <div className="flex items-center text-xs text-gray-400 gap-1.5 mb-3">
-                          <MapPin className="w-3.5 h-3.5" />
+                        <div className="flex items-center text-xs text-gray-400 gap-1 mb-2">
+                          <MapPin className="w-3 h-3" />
                           {profile.district}
                         </div>
-                        <p className="text-xs text-gray-300 bg-gray-800 px-2 py-1 rounded-full">
-                          <b>{profile.housesCount}</b> maison(s) enregistrée(s)
+                        <p className="text-xs text-gray-300">
+                          <b>{profile.housesCount}</b> maison(s)
                         </p>
                       </div>
-                    </motion.div>
-                  ))
-                ) : (
-                  <div className="col-span-full text-center py-20 text-gray-500">
-                    <p>Aucun membre trouvé pour "{searchTerm}"</p>
-                  </div>
-                )}
-              </AnimatePresence>
-            </div>
-          )}
-        </main>
-      </div>
+                    </div>
+                  </motion.div>
+                ))
+              ) : (
+                <div className="col-span-full text-center py-12 text-gray-500">
+                  Aucun résultat pour "{searchTerm}"
+                </div>
+              )}
+            </AnimatePresence>
+          </div>
+        )}
+      </main>
+
+      {/* ===================== NAVBAR ===================== */}
+      <motion.nav
+        initial={{ transform: "translateZ(0)" }}
+        className="fixed bottom-0 left-0 right-0 z-30"
+        style={{ height: NAVBAR_HEIGHT }}
+      >
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-lg border-t border-white/5" />
+        <ul className="relative flex justify-around items-center h-full max-w-lg mx-auto">
+          {navItems.map(item => {
+            const isActive = location.pathname === item.path;
+            return (
+              <li key={item.path} className="flex-1">
+                <Link
+                  to={item.path}
+                  className={`flex flex-col items-center ${
+                    isActive ? "text-white" : "text-gray-500"
+                  }`}
+                >
+                  <item.icon className="w-6 h-6" />
+                  <span className="text-[10px] mt-1">{item.label}</span>
+                </Link>
+              </li>
+            );
+          })}
+        </ul>
+      </motion.nav>
     </div>
   );
 };

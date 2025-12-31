@@ -95,9 +95,27 @@ const GeoLocate = () => {
     
     toast.success(`Position captée ! Précision: ${precision}m`);
 
-    // Redirection auto vers SMS
+    // Tenter la mise à jour directe si en ligne
+    if (!isOffline && id) {
+      supabase
+        .from('geo_requests')
+        .update({
+          lat: latitude,
+          lng: longitude,
+          accuracy: precision,
+          status: 'located'
+        })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) {
+            console.warn("Mise à jour BDD en temps réel échouée:", error);
+          }
+        });
+    }
+
+    // Redirection auto vers SMS (méthode principale et de secours)
     window.location.href = link;
-  }, [id]);
+  }, [id, isOffline]);
 
   const handleLocate = useCallback(() => {
     setStatus('locating');

@@ -1,12 +1,14 @@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { useFormContext } from "react-hook-form";
-import { HouseFormData } from "@/lib/houseFormSchema";
+import { HouseFormData } from "@/hooks/useHouseForm";
 
-const StepFive = () => {
-  const { register, setValue, watch, formState: { errors } } = useFormContext<HouseFormData>();
+interface StepFiveProps {
+  formData: HouseFormData;
+  updateFormData: (updates: Partial<HouseFormData>) => void;
+}
 
+const StepFive = ({ formData, updateFormData }: StepFiveProps) => {
   const sensitiveObjectOptions = [
     { id: "gas", label: "Bouteilles de gaz" },
     { id: "chemicals", label: "Produits chimiques" },
@@ -15,11 +17,11 @@ const StepFive = () => {
   ];
 
   const toggleSensitiveObject = (objectId: string) => {
-    const currentObjects = watch("sensitiveObjects") || [];
+    const currentObjects = formData.sensitiveObjects || [];
     const updated = currentObjects.includes(objectId)
       ? currentObjects.filter((id) => id !== objectId)
       : [...currentObjects, objectId];
-    setValue("sensitiveObjects", updated, { shouldValidate: true });
+    updateFormData({ sensitiveObjects: updated });
   };
 
   return (
@@ -31,7 +33,7 @@ const StepFive = () => {
             <div key={option.id} className="flex items-center space-x-2">
               <Checkbox
                 id={option.id}
-                checked={watch("sensitiveObjects")?.includes(option.id)}
+                checked={formData.sensitiveObjects?.includes(option.id)}
                 onCheckedChange={() => toggleSensitiveObject(option.id)}
               />
               <label htmlFor={option.id} className="text-sm cursor-pointer">
@@ -46,11 +48,11 @@ const StepFive = () => {
         <Label htmlFor="notes">Notes de sécurité supplémentaires</Label>
         <Textarea
           id="notes"
-          {...register("securityNotes")}
+          value={formData.securityNotes}
+          onChange={(e) => updateFormData({ securityNotes: e.target.value })}
           placeholder="Ajoutez toute information importante pour les pompiers..."
           className="min-h-[120px]"
         />
-        {errors.securityNotes && <p className="text-red-500 text-xs">{errors.securityNotes.message}</p>}
       </div>
     </div>
   );

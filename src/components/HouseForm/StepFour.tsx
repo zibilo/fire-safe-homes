@@ -7,52 +7,54 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { useFormContext } from "react-hook-form";
-import { HouseFormData } from "@/lib/houseFormSchema";
+import { HouseFormData } from "@/hooks/useHouseForm";
 
-const StepFour = () => {
-  const { register, setValue, watch, formState: { errors } } = useFormContext<HouseFormData>();
+interface StepFourProps {
+  formData: HouseFormData;
+  updateFormData: (updates: Partial<HouseFormData>) => void;
+}
 
+const StepFour = ({ formData, updateFormData }: StepFourProps) => {
   return (
     <div className="space-y-6">
-      <div>
+      <div className="space-y-2">
         <Label htmlFor="rooms">Nombre de pièces</Label>
         <Input
           id="rooms"
           type="number"
-          {...register("numberOfRooms", { valueAsNumber: true })}
+          value={formData.numberOfRooms || ""}
+          onChange={(e) => updateFormData({ numberOfRooms: parseInt(e.target.value) || undefined })}
           placeholder="5"
         />
-        {errors.numberOfRooms && <p className="text-red-500 text-xs">{errors.numberOfRooms.message}</p>}
       </div>
 
-      <div>
+      <div className="space-y-2">
         <Label htmlFor="surface">Surface (m²)</Label>
         <Input
           id="surface"
           type="number"
-          {...register("surfaceArea", { valueAsNumber: true })}
+          value={formData.surfaceArea || ""}
+          onChange={(e) => updateFormData({ surfaceArea: parseFloat(e.target.value) || undefined })}
           placeholder="120"
         />
-        {errors.surfaceArea && <p className="text-red-500 text-xs">{errors.surfaceArea.message}</p>}
       </div>
 
-      <div>
+      <div className="space-y-2">
         <Label htmlFor="year">Année de construction</Label>
         <Input
           id="year"
           type="number"
-          {...register("constructionYear", { valueAsNumber: true })}
+          value={formData.constructionYear || ""}
+          onChange={(e) => updateFormData({ constructionYear: parseInt(e.target.value) || undefined })}
           placeholder="2010"
         />
-        {errors.constructionYear && <p className="text-red-500 text-xs">{errors.constructionYear.message}</p>}
       </div>
 
-      <div>
+      <div className="space-y-2">
         <Label htmlFor="heating">Type de chauffage</Label>
         <Select
-          defaultValue={watch("heatingType")}
-          onValueChange={(value) => setValue("heatingType", value, { shouldValidate: true })}
+          value={formData.heatingType || ""}
+          onValueChange={(value) => updateFormData({ heatingType: value })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Sélectionnez" />
@@ -65,7 +67,6 @@ const StepFour = () => {
             <SelectItem value="heat-pump">Pompe à chaleur</SelectItem>
           </SelectContent>
         </Select>
-        {errors.heatingType && <p className="text-red-500 text-xs">{errors.heatingType.message}</p>}
       </div>
     </div>
   );
