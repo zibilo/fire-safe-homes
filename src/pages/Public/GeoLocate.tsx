@@ -17,8 +17,7 @@ import {
   Phone,
   Share2,
   Copy,
-  Check,
-  ArrowLeft
+  Check
 } from 'lucide-react';
 
 const EMERGENCY_PHONE_NUMBER = "+242065119788";
@@ -317,7 +316,7 @@ const GeoLocate = () => {
           onClick={() => window.history.back()}
           className="flex items-center gap-2 bg-slate-900/80 backdrop-blur-sm text-slate-300 hover:text-white px-4 py-2 rounded-xl transition-all hover:bg-slate-800 border border-slate-800"
         >
-          <ArrowLeft className="w-5 h-5" />
+          <ChevronLeft className="w-4 h-4" />
           <span className="text-sm font-medium">Retour</span>
         </button>
 
@@ -381,6 +380,7 @@ const GeoLocate = () => {
                   </li>
                   <li className="flex items-start gap-3">
                     <span className="bg-red-500 h-2 w-2 rounded-full mt-1.5 shrink-0 animate-pulse"></span>
+                    
                     <span>Le SMS d'urgence s'ouvrira automatiquement</span>
                   </li>
                   <li className="flex items-start gap-3">
@@ -478,8 +478,7 @@ const GeoLocate = () => {
                       <button
                         onClick={copyCoordinates}
                         className="p-1.5 hover:bg-slate-700/50 rounded-lg transition-colors"
-       
-  title="Copier"
+                        title="Copier"
                       >
                         {copied ? <Check className="w-4 h-4 text-emerald-400" /> : <Copy className="w-4 h-4 text-slate-400" />}
                       </button>
