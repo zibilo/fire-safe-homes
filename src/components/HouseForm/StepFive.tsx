@@ -1,14 +1,17 @@
-import { Label } from "@/components/ui/label";
+import { useFormContext, Controller } from "react-hook-form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { HouseFormData } from "@/hooks/useHouseForm";
 
-interface StepFiveProps {
-  formData: HouseFormData;
-  updateFormData: (updates: Partial<HouseFormData>) => void;
-}
+const StepFive = () => {
+  const { control } = useFormContext();
 
-const StepFive = ({ formData, updateFormData }: StepFiveProps) => {
   const sensitiveObjectOptions = [
     { id: "gas", label: "Bouteilles de gaz" },
     { id: "chemicals", label: "Produits chimiques" },
@@ -16,44 +19,71 @@ const StepFive = ({ formData, updateFormData }: StepFiveProps) => {
     { id: "electrical", label: "Installation électrique ancienne" },
   ];
 
-  const toggleSensitiveObject = (objectId: string) => {
-    const currentObjects = formData.sensitiveObjects || [];
-    const updated = currentObjects.includes(objectId)
-      ? currentObjects.filter((id) => id !== objectId)
-      : [...currentObjects, objectId];
-    updateFormData({ sensitiveObjects: updated });
-  };
-
   return (
     <div className="space-y-6">
-      <div className="space-y-4">
-        <Label>Objets sensibles / dangereux</Label>
-        <div className="space-y-3">
-          {sensitiveObjectOptions.map((option) => (
-            <div key={option.id} className="flex items-center space-x-2">
-              <Checkbox
-                id={option.id}
-                checked={formData.sensitiveObjects?.includes(option.id)}
-                onCheckedChange={() => toggleSensitiveObject(option.id)}
-              />
-              <label htmlFor={option.id} className="text-sm cursor-pointer">
-                {option.label}
-              </label>
+      <FormField
+        control={control}
+        name="sensitiveObjects"
+        render={() => (
+          <FormItem>
+            <div className="mb-4">
+              <FormLabel>Objets sensibles / dangereux</FormLabel>
             </div>
-          ))}
-        </div>
-      </div>
+            {sensitiveObjectOptions.map((item) => (
+              <FormField
+                key={item.id}
+                control={control}
+                name="sensitiveObjects"
+                render={({ field }) => {
+                  return (
+                    <FormItem
+                      key={item.id}
+                      className="flex flex-row items-start space-x-3 space-y-0"
+                    >
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value?.includes(item.id)}
+                          onCheckedChange={(checked) => {
+                            return checked
+                              ? field.onChange([...(field.value || []), item.id])
+                              : field.onChange(
+                                  field.value?.filter(
+                                    (value: string) => value !== item.id
+                                  )
+                                );
+                          }}
+                        />
+                      </FormControl>
+                      <FormLabel className="font-normal">
+                        {item.label}
+                      </FormLabel>
+                    </FormItem>
+                  );
+                }}
+              />
+            ))}
+            <FormMessage />
+          </FormItem>
+        )}
+      />
 
-      <div className="space-y-2">
-        <Label htmlFor="notes">Notes de sécurité supplémentaires</Label>
-        <Textarea
-          id="notes"
-          value={formData.securityNotes}
-          onChange={(e) => updateFormData({ securityNotes: e.target.value })}
-          placeholder="Ajoutez toute information importante pour les pompiers..."
-          className="min-h-[120px]"
-        />
-      </div>
+      <FormField
+        control={control}
+        name="securityNotes"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Notes de sécurité supplémentaires</FormLabel>
+            <FormControl>
+              <Textarea
+                {...field}
+                placeholder="Ajoutez toute information importante pour les pompiers..."
+                className="min-h-[120px]"
+              />
+            </FormControl>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 };

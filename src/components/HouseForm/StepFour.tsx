@@ -1,4 +1,11 @@
-import { Label } from "@/components/ui/label";
+import { useFormContext } from "react-hook-form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import {
   Select,
@@ -7,67 +14,67 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HouseFormData } from "@/hooks/useHouseForm";
 
-interface StepFourProps {
-  formData: HouseFormData;
-  updateFormData: (updates: Partial<HouseFormData>) => void;
-}
+const StepFour = () => {
+  const { control } = useFormContext();
 
-const StepFour = ({ formData, updateFormData }: StepFourProps) => {
+  const fields = [
+    { name: "numberOfRooms", label: "Nombre de pièces", placeholder: "5", type: "number" },
+    { name: "surfaceArea", label: "Surface (m²)", placeholder: "120", type: "number" },
+    { name: "constructionYear", label: "Année de construction", placeholder: "2010", type: "number" },
+  ];
+
+  const heatingOptions = [
+    { value: "electric", label: "Électrique" },
+    { value: "gas", label: "Gaz" },
+    { value: "fuel", label: "Fioul" },
+    { value: "wood", label: "Bois" },
+    { value: "heat-pump", label: "Pompe à chaleur" },
+  ];
+
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="rooms">Nombre de pièces</Label>
-        <Input
-          id="rooms"
-          type="number"
-          value={formData.numberOfRooms || ""}
-          onChange={(e) => updateFormData({ numberOfRooms: parseInt(e.target.value) || undefined })}
-          placeholder="5"
+      {fields.map(({ name, label, placeholder, type }) => (
+        <FormField
+          key={name}
+          control={control}
+          name={name}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{label}</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder={placeholder} type={type} onChange={e => field.onChange(parseInt(e.target.value))} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
+      ))}
 
-      <div className="space-y-2">
-        <Label htmlFor="surface">Surface (m²)</Label>
-        <Input
-          id="surface"
-          type="number"
-          value={formData.surfaceArea || ""}
-          onChange={(e) => updateFormData({ surfaceArea: parseFloat(e.target.value) || undefined })}
-          placeholder="120"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="year">Année de construction</Label>
-        <Input
-          id="year"
-          type="number"
-          value={formData.constructionYear || ""}
-          onChange={(e) => updateFormData({ constructionYear: parseInt(e.target.value) || undefined })}
-          placeholder="2010"
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="heating">Type de chauffage</Label>
-        <Select
-          value={formData.heatingType || ""}
-          onValueChange={(value) => updateFormData({ heatingType: value })}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder="Sélectionnez" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="electric">Électrique</SelectItem>
-            <SelectItem value="gas">Gaz</SelectItem>
-            <SelectItem value="fuel">Fioul</SelectItem>
-            <SelectItem value="wood">Bois</SelectItem>
-            <SelectItem value="heat-pump">Pompe à chaleur</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <FormField
+        control={control}
+        name="heatingType"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Type de chauffage</FormLabel>
+            <Select onValueChange={field.onChange} defaultValue={field.value}>
+              <FormControl>
+                <SelectTrigger>
+                  <SelectValue placeholder="Sélectionnez" />
+                </SelectTrigger>
+              </FormControl>
+              <SelectContent>
+                {heatingOptions.map(option => (
+                  <SelectItem key={option.value} value={option.value}>
+                    {option.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <FormMessage />
+          </FormItem>
+        )}
+      />
     </div>
   );
 };

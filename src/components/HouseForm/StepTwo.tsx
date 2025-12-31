@@ -1,165 +1,95 @@
-import { Label } from "@/components/ui/label";
+import { useFormContext } from "react-hook-form";
+import {
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { HouseFormData } from "@/hooks/useHouseForm";
 
-interface StepTwoProps {
-  formData: HouseFormData;
-  updateFormData: (updates: Partial<HouseFormData>) => void;
-}
+const StepTwo = () => {
+  const { control, watch } = useFormContext();
+  const propertyType = watch("propertyType");
+  const isApartment = propertyType === "apartment";
 
-const StepTwo = ({ formData, updateFormData }: StepTwoProps) => {
-  const isApartment = formData.propertyType === "apartment";
+  const addressFields = [
+    { name: "city", label: "Ville *", placeholder: "Entrez la ville" },
+    { name: "district", label: "District / Village *", placeholder: "Entrez le district ou village" },
+    { name: "neighborhood", label: "Quartier *", placeholder: "Entrez le quartier" },
+    { name: "street", label: "Rue *", placeholder: "Entrez la rue" },
+    { name: "parcelNumber", label: "Numéro de la parcelle *", placeholder: "Entrez le numéro de parcelle" },
+    { name: "phone", label: "Numéro de téléphone *", placeholder: "+242 06 123 4567", type: "tel" },
+  ];
+
+  const apartmentFields = [
+    { name: "buildingName", label: "Nom du bâtiment", placeholder: "Tour A, Résidence..." },
+    { name: "floorNumber", label: "Étage", placeholder: "3", type: "number" },
+    { name: "apartmentNumber", label: "Numéro d'appartement", placeholder: "A12" },
+    { name: "totalFloors", label: "Nombre d'étages total", placeholder: "10", type: "number" },
+  ];
+
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="city" className="required">
-          Ville *
-        </Label>
-        <Input
-          id="city"
-          value={formData.city}
-          onChange={(e) => updateFormData({ city: e.target.value })}
-          placeholder="Entrez la ville"
-          required
+      {addressFields.map(({ name, label, placeholder, type }) => (
+        <FormField
+          key={name}
+          control={control}
+          name={name}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>{label}</FormLabel>
+              <FormControl>
+                <Input {...field} placeholder={placeholder} type={type || 'text'} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
         />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="district" className="required">
-          District / Village *
-        </Label>
-        <Input
-          id="district"
-          value={formData.district}
-          onChange={(e) => updateFormData({ district: e.target.value })}
-          placeholder="Entrez le district ou village"
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="neighborhood" className="required">
-          Quartier *
-        </Label>
-        <Input
-          id="neighborhood"
-          value={formData.neighborhood}
-          onChange={(e) => updateFormData({ neighborhood: e.target.value })}
-          placeholder="Entrez le quartier"
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="street" className="required">
-          Rue *
-        </Label>
-        <Input
-          id="street"
-          value={formData.street}
-          onChange={(e) => updateFormData({ street: e.target.value })}
-          placeholder="Entrez la rue"
-          required
-        />
-      </div>
-
-      <div className="space-y-2">
-        <Label htmlFor="parcelNumber" className="required">
-          Numéro de la parcelle *
-        </Label>
-        <Input
-          id="parcelNumber"
-          value={formData.parcelNumber}
-          onChange={(e) => updateFormData({ parcelNumber: e.target.value })}
-          placeholder="Entrez le numéro de parcelle"
-          required
-        />
-      </div>
+      ))}
 
       {isApartment && (
         <>
-          <div className="space-y-2">
-            <Label htmlFor="buildingName">
-              Nom du bâtiment
-            </Label>
-            <Input
-              id="buildingName"
-              value={formData.buildingName || ""}
-              onChange={(e) => updateFormData({ buildingName: e.target.value })}
-              placeholder="Tour A, Résidence..."
+          {apartmentFields.map(({ name, label, placeholder, type }) => (
+            <FormField
+              key={name}
+              control={control}
+              name={name}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>{label}</FormLabel>
+                  <FormControl>
+                    <Input {...field} placeholder={placeholder} type={type || 'text'} />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
             />
-          </div>
+          ))}
 
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label htmlFor="floorNumber">
-                Étage
-              </Label>
-              <Input
-                id="floorNumber"
-                type="number"
-                value={formData.floorNumber || ""}
-                onChange={(e) => updateFormData({ floorNumber: parseInt(e.target.value) || undefined })}
-                placeholder="3"
-              />
-            </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="apartmentNumber">
-                Numéro d'appartement
-              </Label>
-              <Input
-                id="apartmentNumber"
-                value={formData.apartmentNumber || ""}
-                onChange={(e) => updateFormData({ apartmentNumber: e.target.value })}
-                placeholder="A12"
-              />
-            </div>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="totalFloors">
-              Nombre d'étages total
-            </Label>
-            <Input
-              id="totalFloors"
-              type="number"
-              value={formData.totalFloors || ""}
-              onChange={(e) => updateFormData({ totalFloors: parseInt(e.target.value) || undefined })}
-              placeholder="10"
-            />
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <Checkbox
-              id="elevator"
-              checked={formData.elevatorAvailable || false}
-              onCheckedChange={(checked) =>
-                updateFormData({ elevatorAvailable: checked as boolean })
-              }
-            />
-            <Label htmlFor="elevator" className="font-normal cursor-pointer">
-              Ascenseur disponible
-            </Label>
-          </div>
+          <FormField
+            control={control}
+            name="elevatorAvailable"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 shadow">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                  />
+                </FormControl>
+                <div className="space-y-1 leading-none">
+                  <FormLabel>
+                    Ascenseur disponible
+                  </FormLabel>
+                </div>
+              </FormItem>
+            )}
+          />
         </>
       )}
-
-      <div className="space-y-2">
-        <Label htmlFor="phone" className="required">
-          Numéro de téléphone *
-        </Label>
-        <Input
-          id="phone"
-          type="tel"
-          value={formData.phone}
-          onChange={(e) => updateFormData({ phone: e.target.value })}
-          placeholder="+33 1 23 45 67 89"
-          required
-        />
-      </div>
     </div>
   );
 };
