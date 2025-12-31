@@ -7,54 +7,52 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { HouseFormData } from "@/hooks/useHouseForm";
+import { useFormContext } from "react-hook-form";
+import { HouseFormData } from "@/lib/houseFormSchema";
 
-interface StepFourProps {
-  formData: HouseFormData;
-  updateFormData: (updates: Partial<HouseFormData>) => void;
-}
+const StepFour = () => {
+  const { register, setValue, watch, formState: { errors } } = useFormContext<HouseFormData>();
 
-const StepFour = ({ formData, updateFormData }: StepFourProps) => {
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="rooms">Nombre de pièces</Label>
         <Input
           id="rooms"
           type="number"
-          value={formData.numberOfRooms || ""}
-          onChange={(e) => updateFormData({ numberOfRooms: parseInt(e.target.value) || undefined })}
+          {...register("numberOfRooms", { valueAsNumber: true })}
           placeholder="5"
         />
+        {errors.numberOfRooms && <p className="text-red-500 text-xs">{errors.numberOfRooms.message}</p>}
       </div>
 
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="surface">Surface (m²)</Label>
         <Input
           id="surface"
           type="number"
-          value={formData.surfaceArea || ""}
-          onChange={(e) => updateFormData({ surfaceArea: parseFloat(e.target.value) || undefined })}
+          {...register("surfaceArea", { valueAsNumber: true })}
           placeholder="120"
         />
+        {errors.surfaceArea && <p className="text-red-500 text-xs">{errors.surfaceArea.message}</p>}
       </div>
 
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="year">Année de construction</Label>
         <Input
           id="year"
           type="number"
-          value={formData.constructionYear || ""}
-          onChange={(e) => updateFormData({ constructionYear: parseInt(e.target.value) || undefined })}
+          {...register("constructionYear", { valueAsNumber: true })}
           placeholder="2010"
         />
+        {errors.constructionYear && <p className="text-red-500 text-xs">{errors.constructionYear.message}</p>}
       </div>
 
-      <div className="space-y-2">
+      <div>
         <Label htmlFor="heating">Type de chauffage</Label>
         <Select
-          value={formData.heatingType || ""}
-          onValueChange={(value) => updateFormData({ heatingType: value })}
+          defaultValue={watch("heatingType")}
+          onValueChange={(value) => setValue("heatingType", value, { shouldValidate: true })}
         >
           <SelectTrigger>
             <SelectValue placeholder="Sélectionnez" />
@@ -67,6 +65,7 @@ const StepFour = ({ formData, updateFormData }: StepFourProps) => {
             <SelectItem value="heat-pump">Pompe à chaleur</SelectItem>
           </SelectContent>
         </Select>
+        {errors.heatingType && <p className="text-red-500 text-xs">{errors.heatingType.message}</p>}
       </div>
     </div>
   );
