@@ -1,143 +1,70 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import {
   MapPin,
   ChevronLeft,
+  ShieldAlert,
   Satellite,
+  WifiOff,
   Navigation,
-  Compass,
-  AlertTriangle
+  Compass
 } from 'lucide-react';
-import { toast } from 'sonner';
-
-const EMERGENCY_PHONE_NUMBER = '+242065119788';
-
-type Status = 'idle' | 'locating' | 'sms-ready' | 'error';
 
 const GeoLocate = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
 
-  const [status, setStatus] = useState<Status>('idle');
+  const [status, setStatus] = useState<'idle' | 'locating'>('idle');
   const [accuracy, setAccuracy] = useState<number | null>(null);
-  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
-  const [heading, setHeading] = useState<number>(0);
-
-  const watchIdRef = useRef<number | null>(null);
-
-  /* 🔊 VOIX IA (OFFLINE) */
-  const speak = (text: string) => {
-    if (!('speechSynthesis' in window)) return;
-    const utterance = new SpeechSynthesisUtterance(text);
-    utterance.lang = 'fr-FR';
-    utterance.rate = 0.95;
-    speechSynthesis.cancel();
-    speechSynthesis.speak(utterance);
-  };
-
-  /* 🧭 ORIENTATION RÉELLE (BOUSSOLE) */
-  useEffect(() => {
-    const handleOrientation = (event: DeviceOrientationEvent) => {
-      if (event.alpha !== null) {
-        setHeading(360 - event.alpha);
-      }
-    };
-
-    window.addEventListener('deviceorientationabsolute', handleOrientation, true);
-    window.addEventListener('deviceorientation', handleOrientation, true);
-
-    return () => {
-      window.removeEventListener('deviceorientationabsolute', handleOrientation);
-      window.removeEventListener('deviceorientation', handleOrientation);
-    };
-  }, []);
-
-  /* 📡 GPS */
-  const handleLocate = useCallback(() => {
-    if (!navigator.geolocation) {
-      toast.error('GPS non supporté');
-      return;
-    }
-
-    speak('Position en cours. Veuillez patienter.');
-    setStatus('locating');
-
-    watchIdRef.current = navigator.geolocation.watchPosition(
-      (pos) => {
-        const { latitude, longitude, accuracy } = pos.coords;
-
-        setCoords({ lat: latitude, lng: longitude });
-        setAccuracy(Math.round(accuracy));
-
-        /* ✅ GPS BON */
-        if (accuracy <= 35) {
-          navigator.geolocation.clearWatch(watchIdRef.current!);
-          setStatus('sms-ready');
-          speak('Position acquise avec précision.');
-          toast.success('GPS précis');
-        }
-      },
-      () => {
-        setStatus('error');
-        speak('Erreur de localisation.');
-        toast.error('Erreur GPS');
-      },
-      {
-        enableHighAccuracy: true,
-        timeout: 20000,
-        maximumAge: 0
-      }
-    );
-  }, []);
-
-  /* ⚠️ FALLBACK GPS FAIBLE */
-  useEffect(() => {
-    if (status === 'locating' && accuracy && accuracy > 100) {
-      speak('Signal GPS faible. Restez à découvert.');
-    }
-  }, [accuracy, status]);
-
-  /* 📩 ENVOI SMS */
-  const sendSMS = () => {
-    if (!coords) return;
-
-    const message = `
-🚨 URGENCE GPS 🚨
-Latitude: ${coords.lat}
-Longitude: ${coords.lng}
-Précision: ${accuracy} m
-Google Maps:
-https://maps.google.com/?q=${coords.lat},${coords.lng}
-    `.trim();
-
-    window.location.href = `sms:${EMERGENCY_PHONE_NUMBER}?body=${encodeURIComponent(message)}`;
-  };
+  const [isOffline, setIsOffline] = useState(!navigator.onLine);
 
   return (
-    <div className="fixed inset-0 bg-[#050810] text-white overflow-hidden font-sans">
+    <div className="fixed inset-0 bg-[#050810] text-slate-100 overflow-hidden font-sans">
 
-      {/* 🌌 BACKGROUND */}
+      {/* 🌌 GALAXY BACKGROUND */}
       <div className="absolute inset-0">
-        <div className="absolute -top-1/3 -left-1/3 w-[70%] h-[70%] bg-indigo-600/20 blur-[180px]" />
-        <div className="absolute bottom-[-30%] right-[-30%] w-[80%] h-[80%] bg-purple-700/20 blur-[200px]" />
+        <div className="absolute -top-1/3 -left-1/3 w-[70%] h-[70%] bg-indigo-600/20 blur-[180px] rounded-full" />
+        <div className="absolute bottom-[-30%] right-[-30%] w-[80%] h-[80%] bg-purple-700/20 blur-[200px] rounded-full" />
       </div>
 
       {/* HEADER */}
-      <header className="safe-area-top flex justify-between items-center px-6 py-4 relative z-50">
-        <button onClick={() => navigate(-1)}>
-          <ChevronLeft />
+      <header className="safe-area-top flex items-center justify-between px-6 py-4 relative z-50">
+        <button
+          onClick={() => navigate(-1)}
+          className="p-2 rounded-full bg-slate-800/40 backdrop-blur border border-slate-700/50"
+        >
+          <ChevronLeft className="w-6 h-6" />
         </button>
-        <span className="text-xs tracking-widest text-slate-400">SYSTÈME D’URGENCE</span>
-        <div />
+
+        <div className="text-center">
+          <p className="text-[10px] uppercase tracking-widest text-slate-500">
+            Système d’Alerte
+          </p>
+          <p className="text-xs text-red-500 font-bold flex items-center justify-center gap-1">
+            <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />
+            Sécurisé
+          </p>
+        </div>
+
+        <div className="w-10" />
       </header>
 
+      {/* MAIN */}
       <main className="relative z-10 flex items-center justify-center h-[80vh] px-6">
         <AnimatePresence mode="wait">
 
-          {/* IDLE */}
+          {/* 🌠 IDLE */}
           {status === 'idle' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
+            <motion.div
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              className="w-full max-w-sm text-center"
+            >
+
+              {/* 🧭 COSMIC COMPASS */}
               <div className="relative w-64 h-64 mx-auto mb-12 flex items-center justify-center">
 
                 {/* ORBIT */}
@@ -147,64 +74,92 @@ https://maps.google.com/?q=${coords.lat},${coords.lng}
                   transition={{ repeat: Infinity, duration: 30, ease: 'linear' }}
                 />
 
-                {/* COMET SPHERES */}
-                {[Satellite, Navigation].map((Icon, i) => (
+                {/* ORBITING SILVER SPHERES */}
+                {[Satellite, Navigation, ShieldAlert].map((Icon, i) => (
                   <motion.div
                     key={i}
-                    className="absolute w-10 h-10 bg-slate-300 rounded-full flex items-center justify-center"
+                    className="absolute w-10 h-10 rounded-full bg-gradient-to-br from-slate-200 to-slate-400 shadow-xl flex items-center justify-center"
                     style={{ transformOrigin: '50% 130px' }}
                     animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 16 + i * 6, ease: 'linear' }}
+                    transition={{
+                      repeat: Infinity,
+                      duration: 14 + i * 6,
+                      ease: 'linear'
+                    }}
                   >
-                    <Icon className="text-slate-800 w-5 h-5" />
+                    <Icon className="w-5 h-5 text-slate-800" />
                   </motion.div>
                 ))}
 
-                {/* 🧭 BOUSSOLE RÉELLE */}
+                {/* CENTER COMPASS */}
                 <motion.div
-                  style={{ rotate: heading }}
-                  className="w-28 h-28 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center shadow-xl"
+                  className="w-28 h-28 rounded-full bg-gradient-to-br from-indigo-500 via-purple-600 to-blue-600 shadow-[0_0_80px_rgba(99,102,241,0.7)] flex items-center justify-center"
+                  animate={{ rotate: 360 }}
+                  transition={{ repeat: Infinity, duration: 20, ease: 'linear' }}
                 >
                   <Compass className="w-14 h-14 text-white" />
                 </motion.div>
               </div>
 
-              <Button onClick={handleLocate} className="w-full h-20 text-xl rounded-3xl">
-                <MapPin className="mr-3" /> LOCALISER
-              </Button>
-            </motion.div>
-          )}
+              <h1 className="text-3xl font-black mb-4">
+                Urgence <span className="text-indigo-400">GPS</span>
+              </h1>
 
-          {/* LOCATING */}
-          {status === 'locating' && (
-            <motion.div className="text-center">
-              <Navigation className="mx-auto w-16 h-16 animate-pulse text-indigo-400" />
-              <p className="mt-4">Acquisition GPS…</p>
-              <p className="text-slate-400 text-sm mt-2">
-                Précision : {accuracy ?? '--'} m
+              <p className="text-slate-400 mb-10">
+                Même au-delà des nuages,
+                <br />
+                la direction reste claire.
               </p>
+
+              <Button
+                onClick={() => setStatus('locating')}
+                className="w-full h-20 rounded-[2rem] text-xl font-black bg-indigo-600 hover:bg-indigo-500 shadow-[0_20px_60px_rgba(99,102,241,0.5)]"
+              >
+                <MapPin className="mr-3 h-6 w-6" />
+                LOCALISER
+              </Button>
             </motion.div>
           )}
 
-          {/* SMS READY */}
-          {status === 'sms-ready' && (
-            <motion.div className="text-center">
-              <AlertTriangle className="mx-auto w-16 h-16 text-emerald-400" />
-              <p className="mt-4 font-bold">Position prête</p>
-              <Button onClick={sendSMS} className="mt-6 w-full h-16 rounded-2xl">
-                Envoyer SMS d’urgence
-              </Button>
+          {/* 🛰 LOCATING */}
+          {status === 'locating' && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              className="text-center"
+            >
+              <div className="relative w-48 h-48 mx-auto mb-8 flex items-center justify-center">
+                <div className="absolute inset-0 border border-indigo-400/20 rounded-full animate-ping" />
+                <div className="w-28 h-28 rounded-full bg-slate-900 border border-slate-700 flex items-center justify-center">
+                  <Navigation className="w-12 h-12 text-indigo-400 animate-pulse" />
+                </div>
+              </div>
+
+              <h2 className="text-xl font-bold">Acquisition en cours…</h2>
+              <p className="text-slate-500 italic mt-2">
+                Le ciel vous guide.
+              </p>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
+      {/* FOOTER */}
+      <footer className="safe-area-bottom absolute bottom-6 w-full px-8 flex justify-between items-center text-[10px] opacity-40">
+        <div className="flex items-center gap-2">
+          <span className={`w-2 h-2 rounded-full ${isOffline ? 'bg-amber-500' : 'bg-emerald-500'}`} />
+          {isOffline ? 'Offline' : 'Online'}
+        </div>
+        <span>POMPIERS SERVICES • 2025</span>
+      </footer>
+
       <style>{`
         .safe-area-top { padding-top: env(safe-area-inset-top); }
+        .safe-area-bottom { padding-bottom: env(safe-area-inset-bottom); }
       `}</style>
     </div>
   );
 };
 
 export default GeoLocate;
-
+      
