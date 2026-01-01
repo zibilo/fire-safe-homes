@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Button } from "@/components/ui/button";
-import { X, ChevronLeft } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, Send } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
-import StepOne from "@/components/HouseForm/StepOne";
-import StepTwo from "@/components/HouseForm/StepTwo";
-import StepThree from "@/components/HouseForm/StepThree";
-import StepFour from "@/components/HouseForm/StepFour";
-import StepFive from "@/components/HouseForm/StepFive";
-import { useHouseForm } from "@/hooks/useHouseForm";
+import FormStepOne from "@/components/HouseForm/FormStepOne";
+import FormStepTwo from "@/components/HouseForm/FormStepTwo";
+import FormStepThree from "@/components/HouseForm/FormStepThree";
+import FormStepFour from "@/components/HouseForm/FormStepFour";
+import FormStepFive from "@/components/HouseForm/FormStepFive";
+import { houseFormSchema, HouseFormSchemaType, defaultFormValues } from "@/hooks/useHouseFormSchema";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -21,10 +23,16 @@ const RegisterHouse = () => {
   const [submitting, setSubmitting] = useState(false);
   const [submitProgress, setSubmitProgress] = useState(0);
   const [submitStep, setSubmitStep] = useState("");
+  const [idCardFiles, setIdCardFiles] = useState<{ recto?: File; verso?: File }>({});
   
-  const { formData, updateFormData, resetForm } = useHouseForm();
   const { user, loading } = useAuth();
   const navigate = useNavigate();
+
+  const form = useForm<HouseFormSchemaType>({
+    resolver: zodResolver(houseFormSchema),
+    defaultValues: defaultFormValues,
+    mode: "onChange",
+  });
 
   useEffect(() => {
     if (!loading && !user) {
@@ -34,38 +42,41 @@ const RegisterHouse = () => {
   }, [user, loading, navigate]);
 
   const steps = [
-    { number: 1, title: "Identité & Bien" },
-    { number: 2, title: "Adresse complète" },
-    { number: 3, title: "Documents & Infos" },
-    { number: 4, title: "Caractéristiques" },
-    { number: 5, title: "Sécurité" },
+    { number: 1, title: "Identité", icon: "👤" },
+    { number: 2, title: "Adresse", icon: "📍" },
+    { number: 3, title: "Documents", icon: "📄" },
+    { number: 4, title: "Détails", icon: "🏠" },
+    { number: 5, title: "Sécurité", icon: "🛡️" },
   ];
 
-  const validateStep = (step: number) => {
-    switch (step) {
+  const validateCurrentStep = async (): Promise<boolean> => {
+    const values = form.getValues();
+    
+    switch (currentStep) {
       case 1:
-        if (!formData.ownerName?.trim()) {
-            toast.error("Le nom du propriétaire est obligatoire.");
-            return false;
+        if (!values.ownerName?.trim()) {
+          toast.error("Le nom du propriétaire est obligatoire");
+          return false;
         }
-        if (!formData.idCardRecto) {
-            toast.error("La photo recto de la pièce d'identité est obligatoire.");
-            return false;
+        if (!values.idCardRecto) {
+          toast.error("La photo recto de la pièce d'identité est obligatoire");
+          return false;
         }
-        if (!formData.idCardVerso) {
-            toast.error("La photo verso de la pièce d'identité est obligatoire.");
-            return false;
+        if (!values.idCardVerso) {
+          toast.error("La photo verso de la pièce d'identité est obligatoire");
+          return false;
         }
         return true;
 
       case 2:
-        if (!formData.city?.trim() || !formData.district?.trim() || !formData.neighborhood?.trim() || !formData.street?.trim() || !formData.parcelNumber?.trim()) {
-            toast.error("Tous les champs d'adresse sont obligatoires.");
-            return false;
+        if (!values.city?.trim() || !values.district?.trim() || !values.neighborhood?.trim() || 
+            !values.street?.trim() || !values.parcelNumber?.trim()) {
+          toast.error("Tous les champs d'adresse sont obligatoires");
+          return false;
         }
-        if (!formData.phone?.trim()) {
-             toast.error("Le numéro de téléphone est obligatoire.");
-             return false;
+        if (!values.phone?.trim() || values.phone.length < 8) {
+          toast.error("Numéro de téléphone invalide");
+          return false;
         }
         return true;
 
@@ -73,14 +84,6 @@ const RegisterHouse = () => {
         return true;
 
       case 4:
-        if (!formData.numberOfRooms || !formData.surfaceArea || !formData.constructionYear) {
-            toast.error("Surface, nombre de pièces et année sont obligatoires.");
-            return false;
-        }
-        if (!formData.heatingType) {
-            toast.error("Le type de chauffage/énergie est obligatoire.");
-            return false;
-        }
         return true;
 
       default:
@@ -88,8 +91,9 @@ const RegisterHouse = () => {
     }
   };
 
-  const handleNext = () => {
-    if (!validateStep(currentStep)) return;
+  const handleNext = async () => {
+    const isValid = await validateCurrentStep();
+    if (!isValid) return;
 
     if (currentStep < totalSteps) {
       setDirection(1);
@@ -106,155 +110,99 @@ const RegisterHouse = () => {
 
   const handleSubmit = async () => {
     if (!user) return;
-    if (!validateStep(4)) return;
 
     setSubmitting(true);
     setSubmitProgress(0);
     setSubmitStep("Préparation...");
-    
-    const retryOperation = async <T,>(
-      operation: () => Promise<T>,
-      maxRetries: number = 5,
-      delay: number = 2000
-    ): Promise<T> => {
-      let lastError: Error | null = null;
-      for (let attempt = 1; attempt <= maxRetries; attempt++) {
-        try {
-          return await operation();
-        } catch (error: any) {
-          lastError = error;
-          const errorMsg = error?.message || error?.toString() || 'Unknown error';
-          console.warn(`Tentative ${attempt}/${maxRetries} échouée:`, errorMsg);
-          
-          // Si c'est une erreur réseau ou "isTrusted", on réessaie
-          const isNetworkError = 
-            errorMsg.includes('fetch') || 
-            errorMsg.includes('network') || 
-            errorMsg.includes('Failed to fetch') ||
-            errorMsg.includes('NetworkError') ||
-            errorMsg.includes('timeout') ||
-            error?.isTrusted === true ||
-            (typeof error === 'object' && 'isTrusted' in error);
-          
-          if (attempt < maxRetries && isNetworkError) {
-            setSubmitStep(`Reconnexion... (${attempt}/${maxRetries})`);
-            await new Promise(resolve => setTimeout(resolve, delay * attempt));
-          } else if (!isNetworkError) {
-            // Si ce n'est pas une erreur réseau, on ne réessaie pas
-            throw error;
-          }
-        }
-      }
-      throw lastError;
-    };
 
     try {
+      const values = form.getValues();
       let rectoUrl = "";
       let versoUrl = "";
       
-      // Calculer le nombre total d'étapes pour le pourcentage
-      const hasRecto = !!formData.idCardRectoFile;
-      const hasVerso = !!formData.idCardVersoFile;
-      const totalUploadSteps = (hasRecto ? 1 : 0) + (hasVerso ? 1 : 0) + 1; // +1 pour l'insertion DB
+      const hasRecto = !!idCardFiles.recto;
+      const hasVerso = !!idCardFiles.verso;
+      const totalUploadSteps = (hasRecto ? 1 : 0) + (hasVerso ? 1 : 0) + 1;
       let completedSteps = 0;
 
-      const uploadFileWithProgress = async (
-        file: File, 
-        path: string,
-        stepName: string
-      ): Promise<string> => {
+      const uploadFile = async (file: File, path: string, stepName: string): Promise<string> => {
         setSubmitStep(stepName);
         
-        return retryOperation(async () => {
-          const ext = file.name.split('.').pop();
-          const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
-          
-          // Simuler progression pendant l'upload
-          const startProgress = (completedSteps / totalUploadSteps) * 100;
-          const endProgress = ((completedSteps + 1) / totalUploadSteps) * 100;
-          
-          // Animation de progression
-          const progressInterval = setInterval(() => {
-            setSubmitProgress(prev => {
-              const increment = (endProgress - startProgress) / 20;
-              const newValue = prev + increment;
-              return newValue < endProgress - 5 ? newValue : prev;
-            });
-          }, 100);
-          
-          const { data, error } = await supabase.storage
-            .from('documents')
-            .upload(fileName, file);
-          
-          clearInterval(progressInterval);
-          
-          if (error) throw error;
-          
-          completedSteps++;
-          setSubmitProgress((completedSteps / totalUploadSteps) * 100);
-          
-          const { data: urlData } = supabase.storage
-            .from('documents')
-            .getPublicUrl(data.path);
-          return urlData.publicUrl;
-        });
+        const ext = file.name.split('.').pop();
+        const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
+        
+        const startProgress = (completedSteps / totalUploadSteps) * 100;
+        const endProgress = ((completedSteps + 1) / totalUploadSteps) * 100;
+        
+        const progressInterval = setInterval(() => {
+          setSubmitProgress(prev => {
+            const increment = (endProgress - startProgress) / 20;
+            const newValue = prev + increment;
+            return newValue < endProgress - 5 ? newValue : prev;
+          });
+        }, 100);
+        
+        const { data, error } = await supabase.storage
+          .from('documents')
+          .upload(fileName, file);
+        
+        clearInterval(progressInterval);
+        
+        if (error) throw error;
+        
+        completedSteps++;
+        setSubmitProgress((completedSteps / totalUploadSteps) * 100);
+        
+        const { data: urlData } = supabase.storage
+          .from('documents')
+          .getPublicUrl(data.path);
+        return urlData.publicUrl;
       };
 
-      if (formData.idCardRectoFile) {
-        rectoUrl = await uploadFileWithProgress(
-          formData.idCardRectoFile, 
-          'cni_recto',
-          "Upload CNI recto..."
-        );
+      if (idCardFiles.recto) {
+        rectoUrl = await uploadFile(idCardFiles.recto, 'cni_recto', "Upload CNI recto...");
       }
       
-      if (formData.idCardVersoFile) {
-        versoUrl = await uploadFileWithProgress(
-          formData.idCardVersoFile, 
-          'cni_verso',
-          "Upload CNI verso..."
-        );
+      if (idCardFiles.verso) {
+        versoUrl = await uploadFile(idCardFiles.verso, 'cni_verso', "Upload CNI verso...");
       }
 
-      const allDocs = [...formData.documentsUrls];
+      const allDocs = [...values.documentsUrls];
       if (rectoUrl) allDocs.push(rectoUrl);
       if (versoUrl) allDocs.push(versoUrl);
 
       setSubmitStep("Enregistrement des données...");
       
-      const insertHouse = async () => {
-        const { data, error } = await supabase.from("houses").insert({
-          user_id: user.id,
-          owner_name: formData.ownerName,
-          property_type: formData.propertyType,
-          city: formData.city,
-          district: formData.district,
-          neighborhood: formData.neighborhood,
-          street: formData.street,
-          parcel_number: formData.parcelNumber,
-          phone: formData.phone,
-          building_name: formData.buildingName,
-          floor_number: formData.floorNumber,
-          apartment_number: formData.apartmentNumber,
-          total_floors: formData.totalFloors,
-          elevator_available: formData.elevatorAvailable,
-          description: formData.description || "Aucune description",
-          documents_urls: allDocs,
-          photos_urls: formData.photosUrls,
-          plan_url: formData.planUrl,
-          number_of_rooms: formData.numberOfRooms,
-          surface_area: formData.surfaceArea,
-          construction_year: formData.constructionYear,
-          heating_type: formData.heatingType,
-          sensitive_objects: formData.sensitiveObjects,
-          security_notes: formData.securityNotes,
-        }).select().maybeSingle();
+      const { data, error } = await supabase.from("houses").insert({
+        user_id: user.id,
+        owner_name: values.ownerName,
+        property_type: values.propertyType,
+        city: values.city,
+        district: values.district,
+        neighborhood: values.neighborhood,
+        street: values.street,
+        parcel_number: values.parcelNumber,
+        phone: values.phone,
+        building_name: values.buildingName,
+        floor_number: values.floorNumber,
+        apartment_number: values.apartmentNumber,
+        total_floors: values.totalFloors,
+        elevator_available: values.elevatorAvailable,
+        description: values.description || "Aucune description",
+        documents_urls: allDocs,
+        photos_urls: values.photosUrls,
+        plan_url: values.planUrl,
+        number_of_rooms: values.numberOfRooms,
+        surface_area: values.surfaceArea,
+        construction_year: values.constructionYear,
+        heating_type: values.heatingType,
+        sensitive_objects: values.sensitiveObjects,
+        security_notes: values.securityNotes,
+        id_card_recto_url: rectoUrl,
+        id_card_verso_url: versoUrl,
+      }).select().maybeSingle();
 
-        if (error) throw error;
-        return data;
-      };
-
-      const data = await retryOperation(insertHouse);
+      if (error) throw error;
       
       setSubmitProgress(100);
       setSubmitStep("Terminé !");
@@ -263,45 +211,21 @@ const RegisterHouse = () => {
 
       toast.success("Dossier envoyé avec succès !");
 
-      if (formData.planUrl && data) {
+      if (values.planUrl && data) {
         toast.info("Analyse du plan en cours...");
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 30000);
-        
         fetch('https://sfgncyerlcditfepasjo.supabase.co/functions/v1/analyze-plan', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ planUrl: formData.planUrl, houseId: data.id }),
-          signal: controller.signal
-        })
-        .catch((err) => console.warn("Analyse plan en arrière-plan:", err.message))
-        .finally(() => clearTimeout(timeoutId));
+          body: JSON.stringify({ planUrl: values.planUrl, houseId: data.id }),
+        }).catch((err) => console.warn("Analyse plan:", err.message));
       }
 
-      resetForm();
+      form.reset(defaultFormValues);
+      setIdCardFiles({});
       navigate("/");
     } catch (error: any) {
       console.error("Erreur d'enregistrement:", error);
-      
-      let errorMessage = "Erreur lors de l'envoi";
-      const errorStr = error?.message || error?.toString() || '';
-      
-      if (
-        errorStr.includes('fetch') || 
-        errorStr.includes('network') || 
-        errorStr.includes('Failed to fetch') ||
-        errorStr.includes('NetworkError') ||
-        error?.isTrusted === true ||
-        (typeof error === 'object' && 'isTrusted' in error)
-      ) {
-        errorMessage = "Problème de connexion réseau. Vérifiez votre connexion Internet et réessayez.";
-      } else if (errorStr.includes('timeout')) {
-        errorMessage = "La requête a pris trop de temps. Réessayez.";
-      } else if (errorStr) {
-        errorMessage = errorStr;
-      }
-      
-      toast.error(errorMessage);
+      toast.error(error?.message || "Erreur lors de l'envoi");
     } finally {
       setSubmitting(false);
       setSubmitProgress(0);
@@ -310,17 +234,16 @@ const RegisterHouse = () => {
   };
 
   const variants = {
-    enter: (direction: number) => ({ x: direction > 0 ? 300 : -300, opacity: 0 }),
+    enter: (direction: number) => ({ x: direction > 0 ? 100 : -100, opacity: 0 }),
     center: { zIndex: 1, x: 0, opacity: 1 },
-    exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 300 : -300, opacity: 0 }),
+    exit: (direction: number) => ({ zIndex: 0, x: direction < 0 ? 100 : -100, opacity: 0 }),
   };
 
   const progressPercentage = (currentStep / totalSteps) * 100;
 
   return (
-    <div className="h-screen bg-[#10141D] text-white flex flex-col font-sans overflow-hidden">
+    <div className="min-h-screen bg-[#0f131a] text-white flex flex-col font-sans">
       
-      {/* Progress Overlay */}
       <AnimatePresence>
         <SubmitProgressOverlay 
           progress={submitProgress} 
@@ -329,87 +252,124 @@ const RegisterHouse = () => {
         />
       </AnimatePresence>
       
-      {/* HEADER FIXE */}
-      <div className="flex-none bg-[#10141D] z-50">
-        <div className="flex items-center px-4 h-14 border-b border-white/5">
-          <Link to="/">
-            <X className="w-6 h-6 text-gray-400 cursor-pointer hover:text-white transition-colors" />
+      {/* Header */}
+      <header className="sticky top-0 bg-[#0f131a]/95 backdrop-blur-sm z-50 border-b border-white/5">
+        <div className="flex items-center justify-between px-4 h-14">
+          <Link to="/" className="p-2 -ml-2">
+            <X className="w-6 h-6 text-gray-400" />
           </Link>
-          <h1 className="ml-4 text-sm font-bold text-white tracking-widest uppercase">
-            Étape {currentStep} / {totalSteps} : {steps[currentStep - 1].title}
+          <h1 className="text-sm font-bold text-white tracking-wide">
+            Enregistrer un bien
           </h1>
+          <div className="w-10" />
         </div>
-        <div className="w-full h-1 bg-[#1F2433]">
+        
+        {/* Progress bar */}
+        <div className="h-1 bg-white/5">
           <motion.div 
-            className="h-full bg-[#C41E25]"
+            className="h-full bg-gradient-to-r from-red-600 to-red-500"
             initial={{ width: 0 }}
             animate={{ width: `${progressPercentage}%` }}
             transition={{ duration: 0.3 }}
           />
         </div>
-      </div>
 
-      {/* CONTENU */}
-      <div className="flex-1 overflow-y-auto overflow-x-hidden relative p-6 pb-28">
-        <div className="mb-8 max-w-xl mx-auto">
-          <h2 className="text-2xl md:text-3xl font-bold text-white leading-tight mb-2">
-             {currentStep === 1 && "Identité du propriétaire"}
-             {currentStep === 2 && "Localisation du bien"}
-             {currentStep === 3 && "Documents techniques"}
-             {currentStep === 4 && "Caractéristiques"}
-             {currentStep === 5 && "Sûreté & Risques"}
-          </h2>
-          <p className="text-sm text-gray-400 flex items-center gap-2">
-             <span className="w-1.5 h-1.5 rounded-full bg-[#C41E25]"></span>
-             Tous les champs marqués d'un * sont obligatoires
-          </p>
-        </div>
-
-        <div className="max-w-xl mx-auto">
-            <AnimatePresence mode="wait" custom={direction}>
-            <motion.div
-                key={currentStep}
-                custom={direction}
-                variants={variants}
-                initial="enter"
-                animate="center"
-                exit="exit"
-                transition={{ x: { type: "spring", stiffness: 300, damping: 30 }, opacity: { duration: 0.2 } }}
-                className="w-full"
+        {/* Step indicators */}
+        <div className="flex justify-between px-4 py-3">
+          {steps.map((step) => (
+            <div 
+              key={step.number}
+              className={`flex flex-col items-center ${
+                currentStep >= step.number ? "opacity-100" : "opacity-40"
+              }`}
             >
-                {currentStep === 1 && <StepOne formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 2 && <StepTwo formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 3 && <StepThree formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 4 && <StepFour formData={formData} updateFormData={updateFormData} />}
-                {currentStep === 5 && <StepFive formData={formData} updateFormData={updateFormData} />}
-            </motion.div>
-            </AnimatePresence>
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm mb-1 ${
+                currentStep === step.number 
+                  ? "bg-red-500 text-white" 
+                  : currentStep > step.number 
+                    ? "bg-green-500/20 text-green-400"
+                    : "bg-white/10 text-gray-400"
+              }`}>
+                {currentStep > step.number ? "✓" : step.icon}
+              </div>
+              <span className="text-[10px] text-gray-400 font-medium">
+                {step.title}
+              </span>
+            </div>
+          ))}
         </div>
-      </div>
+      </header>
 
-      {/* FOOTER */}
-      <div className="flex-none bg-[#10141D] border-t border-white/10 p-4 px-6 z-50">
-        <div className="flex items-center justify-between max-w-xl mx-auto w-full gap-4">
+      {/* Content */}
+      <main className="flex-1 overflow-y-auto px-4 py-6 pb-28">
+        <div className="max-w-lg mx-auto">
+          <AnimatePresence mode="wait" custom={direction}>
+            <motion.div
+              key={currentStep}
+              custom={direction}
+              variants={variants}
+              initial="enter"
+              animate="center"
+              exit="exit"
+              transition={{ 
+                x: { type: "spring", stiffness: 300, damping: 30 }, 
+                opacity: { duration: 0.15 } 
+              }}
+            >
+              {currentStep === 1 && (
+                <FormStepOne 
+                  form={form} 
+                  idCardFiles={idCardFiles} 
+                  setIdCardFiles={setIdCardFiles} 
+                />
+              )}
+              {currentStep === 2 && <FormStepTwo form={form} />}
+              {currentStep === 3 && <FormStepThree form={form} />}
+              {currentStep === 4 && <FormStepFour form={form} />}
+              {currentStep === 5 && <FormStepFive form={form} />}
+            </motion.div>
+          </AnimatePresence>
+        </div>
+      </main>
+
+      {/* Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-[#0f131a]/95 backdrop-blur-sm border-t border-white/10 p-4 z-50">
+        <div className="flex items-center justify-between max-w-lg mx-auto gap-3">
           {currentStep > 1 ? (
-             <Button variant="ghost" onClick={handlePrevious} className="text-gray-400 hover:text-white hover:bg-white/5 pl-0 pr-4">
-               <ChevronLeft className="mr-1 h-5 w-5" /> Retour
-             </Button>
-          ) : <div className="w-20"></div>}
-
-          {currentStep < totalSteps ? (
-            <Button onClick={handleNext} className="bg-[#C41E25] hover:bg-[#a0181e] text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-red-900/20">
-              Continuer
+            <Button 
+              variant="ghost" 
+              onClick={handlePrevious} 
+              className="text-gray-400 hover:text-white hover:bg-white/5 h-12 px-4"
+            >
+              <ChevronLeft className="mr-1 h-5 w-5" /> 
+              <span className="hidden sm:inline">Retour</span>
             </Button>
           ) : (
-            <Button onClick={() => handleSubmit()} className="bg-[#C41E25] hover:bg-[#a0181e] text-white rounded-xl px-8 h-12 font-bold shadow-lg shadow-red-900/20" disabled={submitting}>
-              {submitting ? "Envoi..." : "Terminer l'inscription"}
+            <div className="w-16" />
+          )}
+
+          {currentStep < totalSteps ? (
+            <Button 
+              onClick={handleNext} 
+              className="flex-1 max-w-[200px] bg-red-600 hover:bg-red-700 text-white rounded-xl h-12 font-bold shadow-lg shadow-red-900/30"
+            >
+              Continuer
+              <ChevronRight className="ml-1 h-5 w-5" />
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleSubmit} 
+              className="flex-1 max-w-[200px] bg-green-600 hover:bg-green-700 text-white rounded-xl h-12 font-bold shadow-lg shadow-green-900/30" 
+              disabled={submitting}
+            >
+              <Send className="mr-2 h-4 w-4" />
+              {submitting ? "Envoi..." : "Envoyer"}
             </Button>
           )}
         </div>
-      </div>
+      </footer>
     </div>
   );
 };
 
 export default RegisterHouse;
-     
