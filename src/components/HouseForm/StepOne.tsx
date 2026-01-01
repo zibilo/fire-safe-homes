@@ -1,4 +1,4 @@
-import { useFormContext } from "react-hook-form";
+import { useFormContext, Controller } from "react-hook-form";
 import {
   FormControl,
   FormField,
@@ -14,67 +14,41 @@ import { useRef, useState } from "react";
 import { toast } from "sonner";
 
 const StepOne = () => {
-  const { control, setValue } = useFormContext();
+  const { control, setValue, watch } = useFormContext();
 
   const [rectoPreview, setRectoPreview] = useState<string | null>(null);
   const [versoPreview, setVersoPreview] = useState<string | null>(null);
-  const [rectoFile, setRectoFile] = useState<File | null>(null);
-  const [versoFile, setVersoFile] = useState<File | null>(null);
 
   const rectoInputRef = useRef<HTMLInputElement>(null);
   const versoInputRef = useRef<HTMLInputElement>(null);
 
   const handleFileChange = (
     e: React.ChangeEvent<HTMLInputElement>,
-    side: 'recto' | 'verso'
+    side: 'recto' | 'verso',
+    field: any
   ) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Vérification de la taille
     if (file.size > 5 * 1024 * 1024) {
       toast.error("Le fichier est trop volumineux (max 5Mo)");
       return;
     }
 
-    // Vérification du type
-    if (!file.type.startsWith('image/')) {
-      toast.error("Veuillez sélectionner une image valide");
-      return;
-    }
+    field.onChange(e.target.files);
 
-    // Stockage du fichier dans l'état local
-    if (side === 'recto') {
-      setRectoFile(file);
-      // Important: Créer un FileList-like object pour react-hook-form
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      setValue("idCardRecto", dataTransfer.files, { shouldValidate: true });
-    } else {
-      setVersoFile(file);
-      const dataTransfer = new DataTransfer();
-      dataTransfer.items.add(file);
-      setValue("idCardVerso", dataTransfer.files, { shouldValidate: true });
-    }
-
-    // Prévisualisation
     const reader = new FileReader();
     reader.onload = (event) => {
       const result = event.target?.result as string;
-      if (side === 'recto') {
-        setRectoPreview(result);
-      } else {
-        setVersoPreview(result);
-      }
+      if (side === 'recto') setRectoPreview(result);
+      else setVersoPreview(result);
     };
     reader.readAsDataURL(file);
-
-    // Réinitialiser l'input pour permettre la sélection du même fichier
-    e.target.value = '';
   };
 
   return (
     <div className="space-y-8 pb-4">
+
       <FormField
         control={control}
         name="ownerName"
@@ -97,83 +71,78 @@ const StepOne = () => {
 
       <div className="space-y-3">
         <Label className="text-sm font-medium text-gray-300 uppercase tracking-wider flex items-center gap-2">
-          <CreditCard className="w-4 h-4" /> Carte d'identité / Passeport *
+            <CreditCard className="w-4 h-4" /> Carte d'identité / Passeport *
         </Label>
         <div className="grid grid-cols-2 gap-4">
-          {/* RECTO */}
           <FormField
             control={control}
             name="idCardRecto"
-            render={({ field: { value, ...field } }) => (
+            render={({ field }) => (
               <FormItem>
-                <div
-                  onClick={() => rectoInputRef.current?.click()}
-                  className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all h-32 ${
-                    rectoPreview ? "border-green-500/50 bg-green-500/10" : "border-white/10 hover:border-white/30 hover:bg-white/5"
-                  }`}
+                 <div
+                    onClick={() => rectoInputRef.current?.click()}
+                    className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all h-32 ${
+                        rectoPreview ? "border-green-500/50 bg-green-500/10" : "border-white/10 hover:border-white/30 hover:bg-white/5"
+                    }`}
                 >
                   <FormControl>
                     <input
-                      {...field}
-                      type="file"
-                      ref={rectoInputRef}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'recto')}
+                        type="file"
+                        ref={rectoInputRef}
+                        className="hidden"
+                        accept="image/*"
+                        onChange={(e) => handleFileChange(e, 'recto', field)}
                     />
                   </FormControl>
                   {rectoPreview ? (
-                    <>
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-2">
-                        <Check className="w-5 h-5 text-white" />
-                      </div>
-                      <span className="text-xs text-green-400 font-medium">Recto ajouté</span>
-                    </>
+                      <>
+                          <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                              <Check className="w-5 h-5 text-white" />
+                          </div>
+                          <span className="text-xs text-green-400 font-medium">Recto ajouté</span>
+                      </>
                   ) : (
-                    <>
-                      <Upload className="w-6 h-6 text-gray-400 mb-2" />
-                      <span className="text-xs text-gray-400">Ajouter Recto</span>
-                    </>
+                      <>
+                          <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                          <span className="text-xs text-gray-400">Ajouter Recto</span>
+                      </>
                   )}
                 </div>
                 <FormMessage />
               </FormItem>
             )}
           />
-
-          {/* VERSO */}
           <FormField
             control={control}
             name="idCardVerso"
-            render={({ field: { value, ...field } }) => (
+            render={({ field }) => (
               <FormItem>
                 <div
                   onClick={() => versoInputRef.current?.click()}
                   className={`border-2 border-dashed rounded-xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all h-32 ${
-                    versoPreview ? "border-green-500/50 bg-green-500/10" : "border-white/10 hover:border-white/30 hover:bg-white/5"
+                      versoPreview ? "border-green-500/50 bg-green-500/10" : "border-white/10 hover:border-white/30 hover:bg-white/5"
                   }`}
                 >
                   <FormControl>
                     <input
-                      {...field}
                       type="file"
                       ref={versoInputRef}
                       className="hidden"
                       accept="image/*"
-                      onChange={(e) => handleFileChange(e, 'verso')}
+                      onChange={(e) => handleFileChange(e, 'verso', field)}
                     />
                   </FormControl>
                   {versoPreview ? (
-                    <>
-                      <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-2">
-                        <Check className="w-5 h-5 text-white" />
-                      </div>
-                      <span className="text-xs text-green-400 font-medium">Verso ajouté</span>
+                     <>
+                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center mb-2">
+                            <Check className="w-5 h-5 text-white" />
+                        </div>
+                        <span className="text-xs text-green-400 font-medium">Verso ajouté</span>
                     </>
                   ) : (
                     <>
-                      <Upload className="w-6 h-6 text-gray-400 mb-2" />
-                      <span className="text-xs text-gray-400">Ajouter Verso</span>
+                        <Upload className="w-6 h-6 text-gray-400 mb-2" />
+                        <span className="text-xs text-gray-400">Ajouter Verso</span>
                     </>
                   )}
                 </div>

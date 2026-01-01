@@ -75,9 +75,15 @@ const RegisterHouse = () => {
     }
     setSubmitting(true);
     setSubmitProgress(0);
-    setSubmitStep("Préparation...");
+    setSubmitStep("Vérification de la session...");
 
     try {
+        // Rafraîchir la session pour éviter les erreurs de token expiré
+        const { error: sessionError } = await supabase.auth.refreshSession();
+        if (sessionError) throw new Error("Votre session a expiré. Veuillez vous reconnecter.");
+
+        setSubmitStep("Préparation...");
+
         const uploadFile = async (file: File, path: string) => {
             const ext = file.name.split('.').pop();
             const fileName = `${user.id}/${path}_${Date.now()}.${ext}`;
@@ -133,7 +139,13 @@ const RegisterHouse = () => {
         navigate("/");
 
     } catch (error: any) {
-        toast.error("Erreur lors de la soumission: " + error.message);
+        let errorMessage = "Erreur lors de la soumission.";
+        if (error.message) {
+            errorMessage = error.message;
+        } else if (typeof error === 'object' && error !== null && 'isTrusted' in error) {
+            errorMessage = "Problème de connexion. Veuillez rafraîchir la page et réessayer.";
+        }
+        toast.error(errorMessage);
     } finally {
         setSubmitting(false);
     }
