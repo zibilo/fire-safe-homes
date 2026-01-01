@@ -27,7 +27,7 @@ const getSignalQuality = (accuracy: number): { level: number; text: string; colo
 const GeoLocate = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   // États de l'application
   const [smsLink, setSmsLink] = useState('');
   const [status, setStatus] = useState<'idle' | 'locating' | 'sms-ready' | 'error'>('idle');
@@ -95,9 +95,27 @@ const GeoLocate = () => {
     
     toast.success(`Position captée ! Précision: ${precision}m`);
 
-    // Redirection auto vers SMS
+    // Tenter la mise à jour directe si en ligne
+    if (!isOffline && id) {
+      supabase
+        .from('geo_requests')
+        .update({
+          lat: latitude,
+          lng: longitude,
+          accuracy: precision,
+          status: 'located'
+        })
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) {
+            console.warn("Mise à jour BDD en temps réel échouée:", error);
+          }
+        });
+    }
+
+    // Redirection auto vers SMS (méthode principale et de secours)
     window.location.href = link;
-  }, [id]);
+  }, [id, isOffline]);
 
   const handleLocate = useCallback(() => {
     setStatus('locating');
@@ -228,7 +246,7 @@ const GeoLocate = () => {
       )}
 
       {/* Bouton Retour en haut à gauche */}
-      <button 
+      <button
         onClick={() => navigate(-1)}
         className="absolute top-6 left-6 flex items-center text-slate-400 hover:text-white transition-colors"
       >
@@ -357,7 +375,7 @@ const GeoLocate = () => {
                 onClick={handleLocate}
                 className="flex items-center justify-center w-full py-3 text-slate-400 text-sm hover:text-white transition-colors"
               >
-                <RefreshCcw className="w-4 h-4 mr-2" /> 
+                <RefreshCcw className="w-4 h-4 mr-2" />
                 Actualiser la position
               </button>
             </div>
@@ -383,7 +401,7 @@ const GeoLocate = () => {
               
               <Button 
                 onClick={handleLocate} 
-                variant="outline" 
+                variant="outline"
                 className="w-full border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl"
               >
                 Réessayer
