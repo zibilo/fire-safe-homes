@@ -1,184 +1,212 @@
-import React, { useState } from "react";
+import { createContext, useContext, useEffect, useState } from "react";
+import { User, Session } from "@supabase/supabase-js";
+import { supabase } from "@/integrations/supabase/client";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import { PlayCircle, PauseCircle, ChevronsRight } from "lucide-react";
-import { motion } from "framer-motion";
+import { toast } from "sonner";
 
-/* ------------------ CONFIGURATION ------------------ */
-// Nom de l'image de fond stockée dans le dossier /public
-const BACKGROUND_IMAGE_PATH = "/3/pompier-arfican-uniforme-homme-se-prepare-travailler-guy-hummer_1157-46897.jpg"; 
+interface AuthContextType {
+  user: User | null;
+  session: Session | null;
+  signUp: (email: string, password: string, fullName: string) => Promise<{ error: any }>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signOut: () => Promise<void>;
+  refreshSession: () => Promise<boolean>;
+  loading: boolean;
+}
 
-const AUDIO_FILES: { [k: string]: string } = {
-  fr: "/1/1.wav",
-  ln: "/2/2.wav",
-};
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const LanguageCoverPage: React.FC = () => {
+export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
+  const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  /* -------- AUDIO STATE -------- */
-  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
-  const [selectedLang, setSelectedLang] = useState<string | null>(null);
-  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
-
-  const playAudio = (file: string, lang: string) => {
-    
-    // --- ÉTAPE 1: GESTION DE LA PAUSE/REPRISE DU MÊME SON ---
-    if (currentAudio && selectedLang === lang) {
-      // Le même bouton est cliqué, on bascule la lecture
-      if (isAudioPlaying) {
-        currentAudio.pause();
-        setIsAudioPlaying(false);
-      } else {
-        currentAudio.play().catch(error => console.error("Erreur de reprise audio:", error));
-        setIsAudioPlaying(true);
+  // 🔥 FONCTION POUR RAFRAÎCHIR MANUELLEMENT LA SESSION
+  const refreshSession = async (): Promise<boolean> => {
+    try {
+      console.log('🔄 Tentative de rafraîchissement de session...');
+      
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('❌ Erreur refresh session:', error);
+        return false;
       }
-      return;
+
+      if (data.session) {
+        setSession(data.session);
+        setUser(data.session.user);
+        console.log('✅ Session rafraîchie avec succès');
+        return true;
+      }
+      
+      console.warn('⚠️ Aucune session retournée après refresh');
+      return false;
+    } catch (error) {
+      console.error('❌ Exception lors du refresh:', error);
+      return false;
     }
+  };
 
-    // --- ÉTAPE 2: ARRÊT DE L'AUDIO PRÉCÉDENT (si différent) ---
-    if (currentAudio) {
-      currentAudio.pause();
-      // On réinitialise l'objet pour s'assurer qu'il n'y a pas de référence orpheline.
-      // Cela force la création d'un nouvel objet pour le nouveau son.
-      setCurrentAudio(null); 
-    }
-
-    // --- ÉTAPE 3: DÉMARRAGE DU NOUVEL AUDIO ---
-    const audio = new Audio(file);
-    audio.volume = 1;
-    audio.play().then(() => {
-      setCurrentAudio(audio);
-      setSelectedLang(lang);
-      setIsAudioPlaying(true);
-
-      // S'assurer que l'état se met à jour quand le son est fini
-      audio.onended = () => {
-        setCurrentAudio(null);
-        setIsAudioPlaying(false);
-        setSelectedLang(null);
-      };
-    }).catch(error => {
-        console.error("Échec du démarrage audio:", error);
-        // Afficher un message d'erreur si le démarrage échoue
+  useEffect(() => {
+    // Récupérer la session initiale
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+      
+      if (session) {
+        console.log('✅ Session initiale chargée');
+      }
     });
+
+    // 🔥 ÉCOUTER LES CHANGEMENTS D'AUTHENTIFICATION
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange(async (event, session) => {
+      console.log('🔔 Auth event:', event);
+      
+      setSession(session);
+      setUser(session?.user ?? null);
+      setLoading(false);
+
+      // Gérer les différents événements
+      switch (event) {
+        case 'SIGNED_IN':
+          console.log('✅ Utilisateur connecté');
+          break;
+          
+        case 'SIGNED_OUT':
+          console.log('👋 Utilisateur déconnecté');
+          toast.error('Session expirée');
+          break;
+          
+        case 'TOKEN_REFRESHED':
+          console.log('🔄 Token rafraîchi automatiquement');
+          break;
+          
+        case 'USER_UPDATED':
+          console.log('✅ Utilisateur mis à jour');
+          break;
+          
+        case 'PASSWORD_RECOVERY':
+          console.log('🔑 Récupération de mot de passe');
+          break;
+      }
+    });
+
+    // 🔥 VÉRIFICATION PÉRIODIQUE DE LA SESSION (toutes les 5 minutes)
+    const intervalId = setInterval(async () => {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      
+      if (!currentSession) {
+        console.warn('⚠️ Session perdue, tentative de rafraîchissement...');
+        const refreshed = await refreshSession();
+        
+        if (!refreshed) {
+          console.error('❌ Impossible de rafraîchir la session');
+          toast.error('Votre session a expiré. Veuillez vous reconnecter.', {
+            duration: 5000,
+          });
+          setUser(null);
+          setSession(null);
+        }
+      } else {
+        // Vérifier si le token expire bientôt (moins de 10 minutes)
+        const expiresAt = currentSession.expires_at;
+        if (expiresAt) {
+          const expiresIn = expiresAt - Math.floor(Date.now() / 1000);
+          const tenMinutes = 10 * 60;
+          
+          if (expiresIn < tenMinutes && expiresIn > 0) {
+            console.log(`⏰ Token expire dans ${Math.floor(expiresIn / 60)} minutes, rafraîchissement préventif...`);
+            await refreshSession();
+          }
+        }
+      }
+    }, 5 * 60 * 1000); // Vérifier toutes les 5 minutes
+
+    return () => {
+      subscription.unsubscribe();
+      clearInterval(intervalId);
+    };
+  }, []);
+
+  const signUp = async (email: string, password: string, fullName: string) => {
+    try {
+      const redirectUrl = `${window.location.origin}/`;
+      
+      const { error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: redirectUrl,
+          data: {
+            full_name: fullName
+          }
+        }
+      });
+      
+      if (!error) {
+        console.log('✅ Inscription réussie');
+      }
+      
+      return { error };
+    } catch (error) {
+      console.error('❌ Erreur inscription:', error);
+      return { error };
+    }
   };
 
-  /* -------- NAVIGATION -------- */
-  const handleNavigation = () => {
-    localStorage.setItem("app_language", selectedLang || "fr");
-    localStorage.setItem("cover_page_viewed", "true");
-    // Arrêt définitif avant la navigation
-    if (currentAudio) currentAudio.pause();
-    navigate("/home", { replace: true });
+  const signIn = async (email: string, password: string) => {
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (!error) {
+        console.log('✅ Connexion réussie');
+        navigate("/");
+      }
+      
+      return { error };
+    } catch (error) {
+      console.error('❌ Erreur connexion:', error);
+      return { error };
+    }
   };
 
-  // --- HELPER UI ---
-  const AudioButtonIcon = ({ lang }: { lang: string }) =>
-    selectedLang === lang && isAudioPlaying ? (
-      <PauseCircle className="w-7 h-7" />
-    ) : (
-      <PlayCircle className="w-7 h-7" />
-    );
+  const signOut = async () => {
+    try {
+      await supabase.auth.signOut();
+      console.log('✅ Déconnexion réussie');
+      navigate("/auth");
+    } catch (error) {
+      console.error('❌ Erreur déconnexion:', error);
+    }
+  };
 
   return (
-    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden flex items-center justify-center">
-
-      {/* BACKGROUND IMAGE REMPLACÉ */}
-      <div 
-        className="absolute inset-0 w-full h-full object-cover opacity-70"
-        style={{
-          backgroundImage: `url('${BACKGROUND_IMAGE_PATH}')`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-        }}
-      ></div>
-
-      {/* DIMMER OVERLAY */}
-      <div className="absolute inset-0 bg-black/60"></div>
-
-      {/* SKIP BUTTON (Gardé, car il n'était pas lié à la vidéo) */}
-      <button
-        onClick={handleNavigation}
-        className="absolute top-6 right-6 z-30 w-12 h-12 rounded-full 
-                   bg-white/10 border border-white/30 flex items-center justify-center"
-      >
-        <ChevronsRight className="text-white" />
-      </button>
-
-      {/* CARD */}
-      <motion.div
-        initial={{ opacity: 0, y: 40 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="relative z-20 w-[92%] max-w-sm p-7 rounded-3xl 
-                   bg-white/12 backdrop-blur-xl border border-white/20"
-      >
-
-        {/* 🌍 ICON TRADUCTION ANIMÉE */}
-        <motion.div
-          className="flex justify-center mb-4"
-          animate={{
-            rotate: [0, -10, 10, -10, 0],
-            scale: [1, 1.15, 1],
-          }}
-          transition={{ duration: 2.5, repeat: Infinity }}
-        >
-          <motion.div
-            animate={{
-              boxShadow: [
-                "0 0 10px rgba(0,200,255,0.4)",
-                "0 0 25px rgba(255,80,80,0.6)",
-                "0 0 10px rgba(0,200,255,0.4)",
-              ],
-            }}
-            transition={{ duration: 3, repeat: Infinity }}
-            className="w-16 h-16 rounded-full bg-white/15 
-                       flex items-center justify-center border border-white/30"
-          >
-            🌍
-          </motion.div>
-        </motion.div>
-
-        <p className="text-gray-200 text-sm mb-6 text-center">
-          Sélectionnez votre langue
-          <br />
-          <span className="text-xs opacity-80">
-            Traduction vocale intelligente
-          </span>
-        </p>
-
-        {/* LANGUES */}
-        <div className="space-y-4">
-          <div className="flex items-center gap-4 p-3 rounded-xl bg-black/25">
-            <Button onClick={() => playAudio(AUDIO_FILES.ln, "ln")} size="icon">
-              <AudioButtonIcon lang="ln" />
-            </Button>
-            <span className="text-white">Lingala</span>
-          </div>
-
-          <div className="flex items-center gap-4 p-3 rounded-xl bg-black/25">
-            <Button onClick={() => playAudio(AUDIO_FILES.fr, "fr")} size="icon">
-              <AudioButtonIcon lang="fr" />
-            </Button>
-            <span className="text-white">Français</span>
-          </div>
-        </div>
-
-        {selectedLang && (
-          <div className="mt-6 flex justify-center">
-            <button
-              onClick={handleNavigation}
-              className="w-14 h-14 rounded-full bg-white border-4 border-red-500 
-                         flex items-center justify-center"
-            >
-              <ChevronsRight className="text-red-500 w-8 h-8" />
-            </button>
-          </div>
-        )}
-      </motion.div>
-    </div>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      signUp, 
+      signIn, 
+      signOut, 
+      refreshSession, 
+      loading 
+    }}>
+      {children}
+    </AuthContext.Provider>
   );
 };
 
-export default LanguageCoverPage;
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (context === undefined) {
+    throw new Error("useAuth must be used within an AuthProvider");
+  }
+  return context;
+};
