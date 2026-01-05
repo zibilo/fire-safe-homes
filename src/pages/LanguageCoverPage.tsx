@@ -1,69 +1,181 @@
+import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { motion } from "framer-motion";
-import { Globe, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PlayCircle, PauseCircle, ChevronsRight } from "lucide-react";
+import { motion } from "framer-motion";
 
-const LanguageCoverPage = () => {
+/* ------------------ CONFIGURATION ------------------ */
+// Nom de l'image de fond stockée dans le dossier /public
+const BACKGROUND_IMAGE_PATH = "/3/pompier-arfican-uniforme-homme-se-prepare-travailler-guy-hummer_1157-46897.jpg"; 
+
+const AUDIO_FILES: { [k: string]: string } = {
+  fr: "/1/1.wav",
+  ln: "/2/2.wav",
+};
+
+const LanguageCoverPage: React.FC = () => {
   const navigate = useNavigate();
 
-  const handleContinue = () => {
-    localStorage.setItem("hasSeenCoverPage", "true");
-    navigate("/home");
+  /* -------- AUDIO STATE -------- */
+  const [currentAudio, setCurrentAudio] = useState<HTMLAudioElement | null>(null);
+  const [selectedLang, setSelectedLang] = useState<string | null>(null);
+  const [isAudioPlaying, setIsAudioPlaying] = useState(false);
+
+  const playAudio = (file: string, lang: string) => {
+    
+    // --- ÉTAPE 1: GESTION DE LA PAUSE/REPRISE DU MÊME SON ---
+    if (currentAudio && selectedLang === lang) {
+      // Le même bouton est cliqué, on bascule la lecture
+      if (isAudioPlaying) {
+        currentAudio.pause();
+        setIsAudioPlaying(false);
+      } else {
+        currentAudio.play().catch(error => console.error("Erreur de reprise audio:", error));
+        setIsAudioPlaying(true);
+      }
+      return;
+    }
+
+    // --- ÉTAPE 2: ARRÊT DE L'AUDIO PRÉCÉDENT (si différent) ---
+    if (currentAudio) {
+      currentAudio.pause();
+      // On réinitialise l'objet pour s'assurer qu'il n'y a pas de référence orpheline.
+      // Cela force la création d'un nouvel objet pour le nouveau son.
+      setCurrentAudio(null); 
+    }
+
+    // --- ÉTAPE 3: DÉMARRAGE DU NOUVEL AUDIO ---
+    const audio = new Audio(file);
+    audio.volume = 1;
+    audio.play().then(() => {
+      setCurrentAudio(audio);
+      setSelectedLang(lang);
+      setIsAudioPlaying(true);
+
+      // S'assurer que l'état se met à jour quand le son est fini
+      audio.onended = () => {
+        setCurrentAudio(null);
+        setIsAudioPlaying(false);
+        setSelectedLang(null);
+      };
+    }).catch(error => {
+        console.error("Échec du démarrage audio:", error);
+        // Afficher un message d'erreur si le démarrage échoue
+    });
   };
 
+  /* -------- NAVIGATION -------- */
+  const handleNavigation = () => {
+    localStorage.setItem("app_language", selectedLang || "fr");
+    localStorage.setItem("cover_page_viewed", "true");
+    // Arrêt définitif avant la navigation
+    if (currentAudio) currentAudio.pause();
+    navigate("/home", { replace: true });
+  };
+
+  // --- HELPER UI ---
+  const AudioButtonIcon = ({ lang }: { lang: string }) =>
+    selectedLang === lang && isAudioPlaying ? (
+      <PauseCircle className="w-7 h-7" />
+    ) : (
+      <PlayCircle className="w-7 h-7" />
+    );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-red-600 via-orange-500 to-yellow-500 flex items-center justify-center p-4">
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6 }}
-        className="text-center space-y-8 max-w-md"
+    <div className="fixed inset-0 w-full h-full bg-black overflow-hidden flex items-center justify-center">
+
+      {/* BACKGROUND IMAGE REMPLACÉ */}
+      <div 
+        className="absolute inset-0 w-full h-full object-cover opacity-70"
+        style={{
+          backgroundImage: `url('${BACKGROUND_IMAGE_PATH}')`,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundRepeat: 'no-repeat',
+        }}
+      ></div>
+
+      {/* DIMMER OVERLAY */}
+      <div className="absolute inset-0 bg-black/60"></div>
+
+      {/* SKIP BUTTON (Gardé, car il n'était pas lié à la vidéo) */}
+      <button
+        onClick={handleNavigation}
+        className="absolute top-6 right-6 z-30 w-12 h-12 rounded-full 
+                   bg-white/10 border border-white/30 flex items-center justify-center"
       >
-        {/* Logo / Icon */}
+        <ChevronsRight className="text-white" />
+      </button>
+
+      {/* CARD */}
+      <motion.div
+        initial={{ opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="relative z-20 w-[92%] max-w-sm p-7 rounded-3xl 
+                   bg-white/12 backdrop-blur-xl border border-white/20"
+      >
+
+        {/* 🌍 ICON TRADUCTION ANIMÉE */}
         <motion.div
-          initial={{ scale: 0 }}
-          animate={{ scale: 1 }}
-          transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
-          className="mx-auto w-24 h-24 bg-white/20 backdrop-blur-sm rounded-full flex items-center justify-center"
+          className="flex justify-center mb-4"
+          animate={{
+            rotate: [0, -10, 10, -10, 0],
+            scale: [1, 1.15, 1],
+          }}
+          transition={{ duration: 2.5, repeat: Infinity }}
         >
-          <Globe className="w-12 h-12 text-white" />
-        </motion.div>
-
-        {/* Title */}
-        <motion.h1
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.4 }}
-          className="text-4xl font-bold text-white"
-        >
-          FireSafeHomes
-        </motion.h1>
-
-        {/* Subtitle */}
-        <motion.p
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.5 }}
-          className="text-white/90 text-lg"
-        >
-          Protection incendie pour votre domicile
-        </motion.p>
-
-        {/* Continue Button */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-        >
-          <Button
-            onClick={handleContinue}
-            size="lg"
-            className="bg-white text-red-600 hover:bg-white/90 font-semibold px-8 py-6 text-lg rounded-full shadow-lg"
+          <motion.div
+            animate={{
+              boxShadow: [
+                "0 0 10px rgba(0,200,255,0.4)",
+                "0 0 25px rgba(255,80,80,0.6)",
+                "0 0 10px rgba(0,200,255,0.4)",
+              ],
+            }}
+            transition={{ duration: 3, repeat: Infinity }}
+            className="w-16 h-16 rounded-full bg-white/15 
+                       flex items-center justify-center border border-white/30"
           >
-            Continuer
-            <ArrowRight className="ml-2 h-5 w-5" />
-          </Button>
+            🌍
+          </motion.div>
         </motion.div>
+
+        <p className="text-gray-200 text-sm mb-6 text-center">
+          Sélectionnez votre langue
+          <br />
+          <span className="text-xs opacity-80">
+            Traduction vocale intelligente
+          </span>
+        </p>
+
+        {/* LANGUES */}
+        <div className="space-y-4">
+          <div className="flex items-center gap-4 p-3 rounded-xl bg-black/25">
+            <Button onClick={() => playAudio(AUDIO_FILES.ln, "ln")} size="icon">
+              <AudioButtonIcon lang="ln" />
+            </Button>
+            <span className="text-white">Lingala</span>
+          </div>
+
+          <div className="flex items-center gap-4 p-3 rounded-xl bg-black/25">
+            <Button onClick={() => playAudio(AUDIO_FILES.fr, "fr")} size="icon">
+              <AudioButtonIcon lang="fr" />
+            </Button>
+            <span className="text-white">Français</span>
+          </div>
+        </div>
+
+        {selectedLang && (
+          <div className="mt-6 flex justify-center">
+            <button
+              onClick={handleNavigation}
+              className="w-14 h-14 rounded-full bg-white border-4 border-red-500 
+                         flex items-center justify-center"
+            >
+              <ChevronsRight className="text-red-500 w-8 h-8" />
+            </button>
+          </div>
+        )}
       </motion.div>
     </div>
   );
