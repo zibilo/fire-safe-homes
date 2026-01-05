@@ -95,6 +95,27 @@ const FireStations = () => {
     setViewDialogOpen(true);
   };
 
+  const handleGetLocation = () => {
+    if (navigator.geolocation) {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          setFormData({
+            ...formData, 
+            lat: position.coords.latitude.toString(),
+            lng: position.coords.longitude.toString()
+          });
+          toast.success("Position récupérée avec succès");
+        },
+        (error) => {
+          toast.error("Erreur lors de la récupération de la position");
+          console.error(error);
+        }
+      );
+    } else {
+      toast.error("Géolocalisation non supportée par votre navigateur");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -270,14 +291,27 @@ const FireStations = () => {
                   </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Latitude</Label>
-                    <Input type="number" step="any" value={formData.lat} onChange={e => setFormData({...formData, lat: e.target.value})} placeholder="-4.2634" />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between mb-2">
+                    <Label>Coordonnées GPS</Label>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      size="sm"
+                      onClick={handleGetLocation}
+                    >
+                      <MapPin className="mr-2 h-4 w-4" /> Ma position
+                    </Button>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Longitude</Label>
-                    <Input type="number" step="any" value={formData.lng} onChange={e => setFormData({...formData, lng: e.target.value})} placeholder="15.2429" />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label>Latitude</Label>
+                      <Input type="number" step="any" value={formData.lat} onChange={e => setFormData({...formData, lat: e.target.value})} placeholder="-4.2634" />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Longitude</Label>
+                      <Input type="number" step="any" value={formData.lng} onChange={e => setFormData({...formData, lng: e.target.value})} placeholder="15.2429" />
+                    </div>
                   </div>
                 </div>
 
