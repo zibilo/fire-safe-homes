@@ -15,13 +15,13 @@ import {
   ShieldCheck,
   Building2,
   Shield,
-  Bell,
   Settings
 } from "lucide-react";
 import { useState } from "react";
 import { Sheet, SheetContent, SheetTrigger, SheetTitle, SheetDescription } from "@/components/ui/sheet";
 import { useAdminAuth } from "@/contexts/AdminAuthContext";
 import { useAdminNotifications } from "@/hooks/useAdminNotifications";
+import { NotificationCenter } from "@/components/Admin/NotificationCenter";
 
 const AdminLayout = () => {
   const location = useLocation();
@@ -115,17 +115,18 @@ const AdminLayout = () => {
                 </div>
               </SheetContent>
             </Sheet>
-            <div className="flex items-center gap-2">
-              <h1 className="text-xl font-bold">Administration</h1>
-              {totalNotifications > 0 && (
-                <Badge variant="destructive" className="h-6 px-2 animate-bounce">
-                  <Bell className="h-3 w-3 mr-1" />
-                  {totalNotifications}
-                </Badge>
-              )}
-            </div>
+            <h1 className="text-xl font-bold">Administration</h1>
           </div>
           <div className="flex items-center gap-4">
+            <NotificationCenter 
+              totalCount={totalNotifications} 
+              onMarkAllRead={() => {
+                markAsRead('users');
+                markAsRead('houses');
+                markAsRead('reports');
+                markAsRead('geoRequests');
+              }}
+            />
             {adminUser && (
               <div className="hidden md:flex items-center gap-2 text-sm text-muted-foreground">
                 <span>{adminUser.name}</span>
