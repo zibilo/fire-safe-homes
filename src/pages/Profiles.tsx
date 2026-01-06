@@ -61,9 +61,18 @@ const Profiles = () => {
     try {
       setLoading(true);
 
+      // Récupérer les IDs des administrateurs depuis user_roles
+      const { data: adminRoles } = await supabase
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["admin", "moderator"]);
+
+      const adminIds = new Set((adminRoles || []).map(r => r.user_id));
+
+      // Récupérer aussi les super admins depuis profiles
       const { data: users, error } = await supabase
         .from("profiles")
-        .select("id, full_name, email, role");
+        .select("id, full_name, email, role, is_super_admin");
 
       if (error) throw error;
 
@@ -71,14 +80,22 @@ const Profiles = () => {
         .from("houses")
         .select("user_id, district");
 
-      const enriched: ProfileData[] = (users || []).map(user => {
+      // Filtrer pour exclure les administrateurs
+      const standardUsers = (users || []).filter(user => 
+        !adminIds.has(user.id) && 
+        user.role !== "admin" && 
+        user.role !== "moderator" &&
+        !user.is_super_admin
+      );
+
+      const enriched: ProfileData[] = standardUsers.map(user => {
         const userHouses = housesData?.filter(h => h.user_id === user.id) || [];
         const districts = [...new Set(userHouses.map(h => h.district))];
         
         return {
           id: user.id,
           name: user.full_name || user.email?.split("@")[0] || "Utilisateur",
-          role: user.role || "Citoyen",
+          role: "Citoyen",
           housesCount: userHouses.length,
           district: districts[0] || "Non renseigné",
           avatar_url: null
@@ -274,44 +291,80 @@ const Profiles = () => {
       {/* Mobile Bottom Navigation */}
       <MobileNav />
 
-      {/* Android Compatibility Styles */}
+      {/* Android Compatibility Styles - Optimisé pour toutes versions */}
       <style>{`
-        /* Support for dynamic viewport height (Android Chrome) */
+        /* Support for dynamic viewport height (Android 5.0+) */
         @supports (min-height: 100dvh) {
           .min-h-screen {
             min-height: 100dvh;
           }
         }
         
-        /* Smooth momentum scrolling */
-        main {
-          -webkit-overflow-scrolling: touch;
+        /* Fallback pour Android < 7.0 */
+        @supports not (min-height: 100dvh) {
+          .min-h-screen {
+            min-height: 100vh;
+            min-height: calc(var(--vh, 1vh) * 100);
+          }
         }
         
-        /* Better touch targets for Android */
+        /* Smooth momentum scrolling (Android 4.4+) */
+        main {
+          -webkit-overflow-scrolling: touch;
+          scroll-behavior: smooth;
+        }
+        
+        /* Better touch targets for Android (Material Design guidelines) */
         @media (pointer: coarse) {
           button, a, [role="button"], .touch-manipulation {
-            min-height: 44px;
+            min-height: 48px;
+            min-width: 48px;
           }
         }
         
         /* Remove blue highlight on Android tap */
         * {
           -webkit-tap-highlight-color: transparent;
+          -webkit-touch-callout: none;
         }
         
         /* Prevent overscroll bounce on Android */
         html, body {
           overscroll-behavior: none;
+          overscroll-behavior-y: none;
         }
         
-        /* Safe area padding for notched devices */
+        /* Safe area padding for notched devices (Android 9.0+) */
         .safe-area-top {
           padding-top: env(safe-area-inset-top, 0px);
+          padding-top: constant(safe-area-inset-top, 0px);
         }
         
         .safe-area-bottom {
           padding-bottom: env(safe-area-inset-bottom, 0px);
+          padding-bottom: constant(safe-area-inset-bottom, 0px);
+        }
+        
+        /* Fix pour Android WebView (Capacitor) */
+        @media screen and (-webkit-min-device-pixel-ratio: 0) {
+          input, textarea, select {
+            font-size: 16px !important;
+          }
+        }
+        
+        /* Hardware acceleration pour animations fluides */
+        .group {
+          transform: translateZ(0);
+          -webkit-transform: translateZ(0);
+          backface-visibility: hidden;
+          -webkit-backface-visibility: hidden;
+        }
+        
+        /* Amélioration du rendu texte Android */
+        body {
+          -webkit-font-smoothing: antialiased;
+          -moz-osx-font-smoothing: grayscale;
+          text-rendering: optimizeLegibility;
         }
       `}</style>
     </div>

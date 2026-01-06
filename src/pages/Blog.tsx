@@ -19,7 +19,8 @@ import {
   ChevronRight,
   MapPin, 
   PhoneCall, 
-  HelpCircle 
+  HelpCircle,
+  Share2
 } from "lucide-react";
 
 // --- INTERFACES ---
@@ -237,53 +238,87 @@ const Blog = () => {
             {/* GRILLE DES AUTRES ARTICLES */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {(searchTerm ? filteredPosts : filteredPosts.slice(1)).map((post) => (
-                <Link key={post.id} to={`/blog/${post.slug}`} className="group flex flex-col h-full bg-[#101010] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:bg-[#151515]"> 
-                  <div className="aspect-video w-full overflow-hidden relative">
-                    {post.image_url ? (
-                      <img 
-                        src={post.image_url} 
-                        alt={post.title}
-                        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-[#1F1F1F] flex items-center justify-center">
-                          <Flame className="w-10 h-10 text-gray-700" />
-                      </div>
-                    )}
-                    {post.category && (
-                        <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded text-white border border-white/10 uppercase tracking-wide">
-                            {post.category}
+                <div key={post.id} className="group flex flex-col h-full bg-[#101010] border border-white/5 rounded-xl overflow-hidden hover:border-white/10 transition-all hover:bg-[#151515]"> 
+                  <Link to={`/blog/${post.slug}`} className="flex-1 flex flex-col">
+                    <div className="aspect-video w-full overflow-hidden relative">
+                      {post.image_url ? (
+                        <img 
+                          src={post.image_url} 
+                          alt={post.title}
+                          className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110"
+                        />
+                      ) : (
+                        <div className="w-full h-full bg-[#1F1F1F] flex items-center justify-center">
+                            <Flame className="w-10 h-10 text-gray-700" />
                         </div>
-                    )}
-                  </div>
-
-                  <div className="p-5 flex flex-col flex-1">
-                    <div className="flex items-center gap-3 text-[10px] font-medium text-gray-500 mb-3 uppercase tracking-wider">
-                      <span>{formatDate(post.published_at)}</span>
-                      
-                      {calculateReadTime(post.content) && (
-                          <>
-                            <span className="w-1 h-1 rounded-full bg-[#C41E25]"></span>
-                            <span>{calculateReadTime(post.content)} Min</span>
-                          </>
+                      )}
+                      {post.category && (
+                          <div className="absolute top-3 left-3 bg-black/60 backdrop-blur-sm text-[10px] font-bold px-2 py-1 rounded text-white border border-white/10 uppercase tracking-wide">
+                              {post.category}
+                          </div>
                       )}
                     </div>
 
-                    <h3 className="text-lg font-bold leading-snug text-white mb-3 group-hover:text-[#C41E25] transition-colors">
-                      {post.title}
-                    </h3>
+                    <div className="p-5 flex flex-col flex-1">
+                      <div className="flex items-center gap-3 text-[10px] font-medium text-gray-500 mb-3 uppercase tracking-wider">
+                        <span>{formatDate(post.published_at)}</span>
+                        
+                        {calculateReadTime(post.content) && (
+                            <>
+                              <span className="w-1 h-1 rounded-full bg-[#C41E25]"></span>
+                              <span>{calculateReadTime(post.content)} Min</span>
+                            </>
+                        )}
+                      </div>
 
-                    {post.excerpt && (
-                      <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed mb-4 flex-1">
-                          {post.excerpt}
-                      </p>
-                    )}
-                    
-                    <div className="flex items-center text-[#C41E25] text-xs font-bold uppercase tracking-wider mt-auto group-hover:translate-x-1 transition-transform">
-                      Lire l'article <ChevronRight className="w-3 h-3 ml-1" />
+                      <h3 className="text-lg font-bold leading-snug text-white mb-3 group-hover:text-[#C41E25] transition-colors">
+                        {post.title}
+                      </h3>
+
+                      {post.excerpt && (
+                        <p className="text-sm text-gray-400 line-clamp-2 leading-relaxed mb-4 flex-1">
+                            {post.excerpt}
+                        </p>
+                      )}
                     </div>
+                  </Link>
+                  
+                  {/* Bouton Partage Natif */}
+                  <div className="px-5 pb-5 flex items-center justify-between">
+                    <Link to={`/blog/${post.slug}`} className="flex items-center text-[#C41E25] text-xs font-bold uppercase tracking-wider group-hover:translate-x-1 transition-transform">
+                      Lire l'article <ChevronRight className="w-3 h-3 ml-1" />
+                    </Link>
+                    <button
+                      onClick={async (e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        const shareData = {
+                          title: post.title,
+                          text: post.excerpt || "Découvrez cet article sur LE POMPIER",
+                          url: `${window.location.origin}/blog/${post.slug}`,
+                        };
+                        if (navigator.share) {
+                          try {
+                            await navigator.share(shareData);
+                          } catch (err) {
+                            console.log("Partage annulé");
+                          }
+                        } else {
+                          try {
+                            await navigator.clipboard.writeText(shareData.url);
+                            toast.success("Lien copié !");
+                          } catch {
+                            toast.error("Impossible de copier");
+                          }
+                        }
+                      }}
+                      className="p-2 rounded-full bg-white/5 hover:bg-white/10 transition-colors touch-manipulation"
+                      aria-label="Partager cet article"
+                    >
+                      <Share2 className="w-4 h-4 text-gray-400" />
+                    </button>
                   </div>
-                </Link>
+                </div>
               ))}
             </div>
           </div>
