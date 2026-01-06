@@ -90,11 +90,11 @@ export default function Home() {
 
 
   return (
-    <div className="fixed inset-0 bg-black flex flex-col overflow-hidden">
+    <div className="fixed inset-0 bg-black flex flex-col overflow-hidden" style={{ minHeight: '100dvh' }}>
 
-      {/* ===== HEADER (z-50) ===== */}
-      <header className="fixed top-0 left-0 w-full h-16 flex items-center justify-center bg-black z-50 border-b border-gray-800">
-        <h1 className="text-white font-bold text-lg">Centre de Secours</h1>
+      {/* ===== HEADER (z-50) - Optimisé Android ===== */}
+      <header className="fixed top-0 left-0 w-full h-14 flex items-center justify-center bg-black/95 backdrop-blur-xl z-50 border-b border-white/5 safe-area-top">
+        <h1 className="text-white font-bold text-lg tracking-wide">Centre de Secours</h1>
       </header>
       
       {/* ===== WIDGET AIDE AUDIO (Centré) ===== */}
@@ -251,9 +251,54 @@ export default function Home() {
         </motion.a>
       )}
       
-      {/* ===== ANIMATIONS CSS SUPPLÉMENTAIRES ET GLOBALES (Styles Blob et Animations) ===== */}
+      {/* ===== ANIMATIONS CSS ET COMPATIBILITÉ ANDROID ===== */}
       <style>{`
-        /* Animations par défaut */
+        /* === COMPATIBILITÉ ANDROID TOUTES VERSIONS === */
+        
+        /* Dynamic viewport height (Android 7.0+) */
+        @supports (min-height: 100dvh) {
+          .min-h-dvh { min-height: 100dvh; }
+        }
+        
+        /* Fallback pour Android < 7.0 */
+        @supports not (min-height: 100dvh) {
+          .min-h-dvh { 
+            min-height: 100vh;
+            min-height: calc(var(--vh, 1vh) * 100);
+          }
+        }
+        
+        /* Hardware acceleration pour animations fluides */
+        .transform-gpu {
+          transform: translateZ(0);
+          -webkit-transform: translateZ(0);
+          will-change: transform;
+        }
+        
+        /* Touch targets Material Design (48dp min) */
+        @media (pointer: coarse) {
+          button, a, [role="button"] {
+            min-height: 48px;
+          }
+        }
+        
+        /* Empêcher le zoom sur double-tap Android */
+        * {
+          touch-action: manipulation;
+        }
+        
+        /* Safe areas pour appareils à encoche */
+        .safe-area-top {
+          padding-top: env(safe-area-inset-top, 0px);
+          padding-top: constant(safe-area-inset-top, 0px);
+        }
+        
+        .safe-area-bottom {
+          padding-bottom: env(safe-area-inset-bottom, 0px);
+          padding-bottom: constant(safe-area-inset-bottom, 0px);
+        }
+        
+        /* === ANIMATIONS === */
         @keyframes bounce-slow {
           0%, 100% { transform: translateY(0); }
           50% { transform: translateY(-10px); }
@@ -271,26 +316,24 @@ export default function Home() {
           animation: pulse-fast 1.5s infinite ease-in-out;
         }
         
-        /* ========================================================= */
-        /* STYLES DU BOUTON URGENCE (BLOB) */
-        /* ========================================================= */
+        /* === STYLES DU BOUTON URGENCE (BLOB) === */
         .blob-button {
           cursor: pointer;
           border-radius: 16px;
           border: none;
           padding: 2px;
-          /* Utilisation de couleurs Rouge/Urgence */
           background: radial-gradient(circle 80px at 80% -10%, #fff0f0, #200000); 
           position: relative;
           width: 100%; 
           transition: background 0.3s, transform 0.3s;
           font-weight: bold;
           font-size: 1.1rem;
+          -webkit-tap-highlight-color: transparent;
+          touch-action: manipulation;
         }
 
-        /* Transition de survol standard */
-        .blob-button:hover {
-          transform: scale(0.98); 
+        .blob-button:active {
+          transform: scale(0.96); 
         }
 
         .blob-button::after {
@@ -303,11 +346,6 @@ export default function Home() {
           right: 0;
           box-shadow: 0 0 20px #ff505038; 
           z-index: -1;
-          transition: box-shadow 0.3s;
-        }
-
-        .blob-button:hover::after {
-          box-shadow: 0 0 10px #ff000018; 
         }
 
         .blob-button .blob1 {
@@ -317,7 +355,6 @@ export default function Home() {
           border-radius: 16px;
           bottom: 0;
           left: 0;
-          /* Couleur du blob rouge/orange */
           background: radial-gradient(
             circle 60px at 0% 100%,
             #ff733f,
@@ -325,11 +362,6 @@ export default function Home() {
             transparent
           );
           box-shadow: -10px 10px 30px #ff45002d;
-          transition: background 0.3s, box-shadow 0.3s;
-        }
-
-        .blob-button:hover .blob1 {
-          box-shadow: -5px 5px 20px #200000;
         }
 
         .blob-button .inner {
@@ -338,16 +370,11 @@ export default function Home() {
           color: #fff;
           z-index: 3;
           position: relative;
-          /* Fond principal rouge foncé */
           background: radial-gradient(circle 80px at 80% -50%, #883333, #300505); 
-          transition: background 0.3s;
           display: flex; 
           align-items: center;
           justify-content: center;
-        }
-
-        .blob-button:hover .inner {
-          background: radial-gradient(circle 80px at 80% -50%, #440000, #100000);
+          min-height: 48px;
         }
 
         .blob-button .inner::before {
@@ -357,7 +384,6 @@ export default function Home() {
           left: 0;
           top: 0;
           border-radius: 14px;
-          /* Effet de lueur rouge */
           background: radial-gradient(
             circle 60px at 0% 100%,
             #ff00001a,
@@ -365,13 +391,7 @@ export default function Home() {
             transparent
           );
           position: absolute;
-          transition: opacity 0.3s;
         }
-
-        .blob-button:hover .inner::before {
-          opacity: 0;
-        }
-        
       `}</style>
     </div>
   );
