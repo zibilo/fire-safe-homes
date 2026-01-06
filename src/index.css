@@ -118,46 +118,102 @@ All colors MUST be HSL.
   * {
     @apply border-border;
     -webkit-tap-highlight-color: transparent;
+    -webkit-touch-callout: none;
+    box-sizing: border-box;
   }
 
   html {
     -webkit-text-size-adjust: 100%;
+    -ms-text-size-adjust: 100%;
     text-size-adjust: 100%;
     scroll-behavior: smooth;
+    /* Dynamic viewport height for Android */
+    height: 100%;
+    height: -webkit-fill-available;
   }
 
   body {
     @apply bg-background text-foreground;
-    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
+    overscroll-behavior: none;
     overscroll-behavior-y: contain;
+    /* Prevent pull-to-refresh on Android */
+    touch-action: pan-x pan-y;
+    /* Mobile height fix */
+    min-height: 100%;
+    min-height: 100vh;
+    min-height: -webkit-fill-available;
   }
   
   h1, h2, h3, h4, h5, h6 {
     @apply font-semibold;
   }
 
-  /* Mobile touch-friendly inputs */
-  input, textarea, select {
-    font-size: 16px !important; /* Prevents zoom on iOS/Android */
+  /* Mobile touch-friendly inputs - Prevents zoom on iOS/Android */
+  input, textarea, select, button {
+    font-size: 16px !important;
+    touch-action: manipulation;
   }
 
-  /* Safe area support for modern Android */
+  /* Better touch targets (Material Design 48dp minimum) */
+  @media (pointer: coarse) {
+    button, 
+    a, 
+    [role="button"],
+    input[type="button"],
+    input[type="submit"],
+    .touch-target {
+      min-height: 48px;
+      min-width: 48px;
+    }
+  }
+
+  /* Safe area support for all Android versions */
   .safe-area-top {
     padding-top: env(safe-area-inset-top, 0px);
+    padding-top: constant(safe-area-inset-top, 0px);
   }
   
   .safe-area-bottom {
     padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: constant(safe-area-inset-bottom, 0px);
   }
 
   .safe-area-left {
     padding-left: env(safe-area-inset-left, 0px);
+    padding-left: constant(safe-area-inset-left, 0px);
   }
 
   .safe-area-right {
     padding-right: env(safe-area-inset-right, 0px);
+    padding-right: constant(safe-area-inset-right, 0px);
+  }
+
+  /* Hardware acceleration for smooth animations */
+  .hw-accelerate {
+    transform: translateZ(0);
+    -webkit-transform: translateZ(0);
+    backface-visibility: hidden;
+    -webkit-backface-visibility: hidden;
+    perspective: 1000px;
+    -webkit-perspective: 1000px;
+  }
+
+  /* Scrollable containers optimization */
+  .scroll-container {
+    -webkit-overflow-scrolling: touch;
+    scroll-behavior: smooth;
+    overscroll-behavior: contain;
+  }
+
+  /* Fix for Android keyboard pushing content */
+  .keyboard-aware {
+    position: fixed;
+    width: 100%;
+    height: 100%;
   }
 }
 
