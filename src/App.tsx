@@ -7,6 +7,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, useNavigate } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
+import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AdminProtectedRoute } from "@/components/AdminProtectedRoute";
 
 // --- IMPORTS STATIQUES (Doivent être en haut) ---
@@ -115,13 +116,14 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <HoverReceiver />
-        <BrowserRouter>
-          <AuthProvider>
-            <AdminAuthProvider>
+      <ThemeProvider>
+        <TooltipProvider>
+          <Toaster />
+          <Sonner />
+          <HoverReceiver />
+          <BrowserRouter>
+            <AuthProvider>
+              <AdminAuthProvider>
               <Routes>
                 
                 {/* 1. 🥇 ROUTE RACINE : GESTIONNAIRE INTELLIGENT */}
@@ -232,10 +234,11 @@ const App = () => {
                 {/* CATCH-ALL */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
-            </AdminAuthProvider>
-          </AuthProvider>
-        </BrowserRouter>
-      </TooltipProvider>
+              </AdminAuthProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 };
