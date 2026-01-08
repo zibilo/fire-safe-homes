@@ -153,7 +153,7 @@ export default function Home() {
                       : "bg-card border border-border text-foreground hover:bg-accent"
                   }`}
                 >
-                  🇨🇩 Lingala
+                  🇨🇬 Lingala
                 </button>
                 {currentlyPlaying && (
                   <button
