@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { 
   MapPin, 
@@ -11,10 +10,11 @@ import {
   RefreshCcw,
   ShieldAlert,
   Satellite,
-  WifiOff,
-  CheckCircle
+  WifiOff
 } from 'lucide-react';
 import { toast } from 'sonner';
+
+const EMERGENCY_PHONE_NUMBER = "+242065119788";
 
 // Niveaux de qualité du signal satellite
 const getSignalQuality = (accuracy: number): { level: number; text: string; color: string } => {
@@ -27,9 +27,10 @@ const getSignalQuality = (accuracy: number): { level: number; text: string; colo
 const GeoLocate = () => {
   const { id } = useParams();
   const navigate = useNavigate();
-  
+
   // États de l'application
-  const [status, setStatus] = useState<'idle' | 'locating' | 'sending' | 'success' | 'error'>('idle');
+  const [smsLink, setSmsLink] = useState('');
+  const [status, setStatus] = useState<'idle' | 'locating' | 'sms-ready' | 'error'>('idle');
   const [errorMsg, setErrorMsg] = useState('');
   const [accuracy, setAccuracy] = useState<number | null>(null);
   const [coordinates, setCoordinates] = useState<{ lat: number; lng: number } | null>(null);
@@ -66,9 +67,10 @@ const GeoLocate = () => {
     };
   }, []);
 
-  // Réinitialiser les données au chargement
+  // SÉCURITÉ : Réinitialiser les données au chargement du composant
   useEffect(() => {
     setStatus('idle');
+    setSmsLink('');
     setErrorMsg('');
     setAccuracy(null);
     setCoordinates(null);
@@ -76,17 +78,26 @@ const GeoLocate = () => {
     bestPositionRef.current = null;
   }, [id]);
 
-  // Fonction pour envoyer les coordonnées au backend
-  const sendToBackend = async (position: GeolocationPosition) => {
+  const finalizeSMS = useCallback((position: GeolocationPosition) => {
     const { latitude, longitude, accuracy: acc } = position.coords;
     const precision = Math.round(acc);
     
-    setStatus('sending');
+    // URL format compatible hors ligne (pas de dépendance réseau)
+    const mapUrl = `https://www.google.com/maps?q=${latitude.toFixed(6)},${longitude.toFixed(6)}`;
+    const message = `URGENCE POMPIERS - Ma position GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} - Carte: ${mapUrl} (Précision: ${precision}m). Réf: ${id || 'N/A'}`;
+    
+    const link = `sms:${EMERGENCY_PHONE_NUMBER}?body=${encodeURIComponent(message)}`;
+    
+    setSmsLink(link);
+    setStatus('sms-ready');
     setAccuracy(precision);
     setCoordinates({ lat: latitude, lng: longitude });
+    
+    toast.success(`Position captée ! Précision: ${precision}m`);
 
-    try {
-      const { error } = await supabase
+    // Tenter la mise à jour directe si en ligne
+    if (!isOffline && id) {
+      supabase
         .from('geo_requests')
         .update({
           lat: latitude,
@@ -94,19 +105,17 @@ const GeoLocate = () => {
           accuracy: precision,
           status: 'located'
         })
-        .eq('id', id);
-
-      if (error) throw error;
-
-      setStatus('success');
-      toast.success(`Position envoyée ! Précision: ${precision}m`);
-    } catch (error) {
-      console.error('Erreur envoi:', error);
-      setStatus('error');
-      setErrorMsg('Erreur lors de l\'envoi des coordonnées. Vérifiez votre connexion.');
-      toast.error('Échec de l\'envoi');
+        .eq('id', id)
+        .then(({ error }) => {
+          if (error) {
+            console.warn("Mise à jour BDD en temps réel échouée:", error);
+          }
+        });
     }
-  };
+
+    // Redirection auto vers SMS (méthode principale et de secours)
+    window.location.href = link;
+  }, [id, isOffline]);
 
   const handleLocate = useCallback(() => {
     setStatus('locating');
@@ -128,13 +137,14 @@ const GeoLocate = () => {
       clearTimeout(timeoutRef.current);
     }
 
-    // Options optimisées pour GPS satellite
+    // Options optimisées pour GPS satellite (hors ligne)
     const geoOptions: PositionOptions = {
-      enableHighAccuracy: true,
-      timeout: 60000,
-      maximumAge: 0
+      enableHighAccuracy: true, // Force le GPS satellite (pas WiFi/Cell)
+      timeout: 60000,           // 60 secondes pour acquisition satellite
+      maximumAge: 0             // Toujours une nouvelle position
     };
 
+    // Utiliser watchPosition pour améliorer la précision progressivement
     const watchId = navigator.geolocation.watchPosition(
       (position) => {
         setAttempts(prev => prev + 1);
@@ -152,7 +162,7 @@ const GeoLocate = () => {
           navigator.geolocation.clearWatch(watchId);
           watchIdRef.current = null;
           if (timeoutRef.current) clearTimeout(timeoutRef.current);
-          sendToBackend(position);
+          finalizeSMS(position);
         }
       },
       (err) => {
@@ -163,7 +173,7 @@ const GeoLocate = () => {
         
         // Si on a une position, même imprécise, l'utiliser
         if (bestPositionRef.current) {
-          sendToBackend(bestPositionRef.current);
+          finalizeSMS(bestPositionRef.current);
           return;
         }
         
@@ -191,13 +201,13 @@ const GeoLocate = () => {
       }
       
       if (bestPositionRef.current) {
-        sendToBackend(bestPositionRef.current);
+        finalizeSMS(bestPositionRef.current);
       } else if (status === 'locating') {
         setStatus('error');
         setErrorMsg("Impossible de capter le signal satellite. Essayez à l'extérieur.");
       }
     }, 45000);
-  }, [id, status]);
+  }, [finalizeSMS, status]);
 
   // Composant indicateur de signal satellite
   const SignalIndicator = ({ accuracy: acc }: { accuracy: number | null }) => {
@@ -235,8 +245,8 @@ const GeoLocate = () => {
         </div>
       )}
 
-      {/* Bouton Retour */}
-      <button 
+      {/* Bouton Retour en haut à gauche */}
+      <button
         onClick={() => navigate(-1)}
         className="absolute top-6 left-6 flex items-center text-slate-400 hover:text-white transition-colors"
       >
@@ -245,6 +255,7 @@ const GeoLocate = () => {
       </button>
 
       <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-3xl p-8 shadow-2xl relative overflow-hidden">
+        {/* Décoration d'arrière-plan discrète */}
         <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-600/10 rounded-full blur-3xl"></div>
 
         <div className="flex flex-col items-center text-center">
@@ -259,10 +270,11 @@ const GeoLocate = () => {
             Transmission de coordonnées GPS
           </p>
           
+          {/* Indicateur mode hors ligne */}
           {isOffline && (
             <p className="text-amber-400 text-xs mb-4 flex items-center gap-1">
               <Satellite className="w-3 h-3" />
-              GPS Satellite actif (nécessite connexion pour envoi)
+              GPS Satellite actif (fonctionne sans internet)
             </p>
           )}
 
@@ -282,11 +294,11 @@ const GeoLocate = () => {
                   </li>
                   <li className="flex items-start">
                     <span className="bg-red-500 h-2 w-2 rounded-full mt-1.5 mr-2 shrink-0"></span>
-                    Vos coordonnées seront envoyées automatiquement.
+                    Le SMS s'ouvrira automatiquement.
                   </li>
                   <li className="flex items-start">
                     <span className="bg-emerald-500 h-2 w-2 rounded-full mt-1.5 mr-2 shrink-0"></span>
-                    GPS fonctionne sans Internet (envoi nécessite connexion).
+                    Fonctionne sans connexion Internet.
                   </li>
                 </ul>
               </div>
@@ -308,6 +320,7 @@ const GeoLocate = () => {
                 <Loader2 className="w-16 h-16 animate-spin text-red-500 relative z-10" />
               </div>
               
+              {/* Indicateur de signal en temps réel */}
               {accuracy !== null && <SignalIndicator accuracy={accuracy} />}
               
               <p className="mt-4 text-white font-medium animate-pulse">
@@ -323,9 +336,10 @@ const GeoLocate = () => {
                 </p>
               )}
               
+              {/* Bouton pour forcer la finalisation */}
               {accuracy !== null && accuracy > 15 && (
                 <button
-                  onClick={() => bestPositionRef.current && sendToBackend(bestPositionRef.current)}
+                  onClick={() => bestPositionRef.current && finalizeSMS(bestPositionRef.current)}
                   className="mt-4 text-sm text-slate-400 hover:text-white underline"
                 >
                   Utiliser la position actuelle ({accuracy}m)
@@ -334,25 +348,13 @@ const GeoLocate = () => {
             </div>
           )}
 
-          {/* ÉTAT : ENVOI EN COURS */}
-          {status === 'sending' && (
-            <div className="py-6 flex flex-col items-center w-full">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
-              <p className="text-white font-medium">Envoi en cours...</p>
-              {accuracy !== null && <SignalIndicator accuracy={accuracy} />}
-            </div>
-          )}
-
-          {/* ÉTAT : SUCCÈS */}
-          {status === 'success' && (
+          {/* ÉTAT : SMS PRÊT */}
+          {status === 'sms-ready' && (
             <div className="w-full space-y-4 py-4 animate-in slide-in-from-bottom-4 duration-500">
-              <div className="bg-emerald-500/10 border border-emerald-500/20 py-4 rounded-lg">
-                <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-2" />
-                <p className="text-emerald-500 font-bold text-lg">Position Envoyée !</p>
-                <p className="text-slate-400 text-sm mt-1">Les secours ont reçu votre localisation</p>
+              <div className="bg-emerald-500/10 border border-emerald-500/20 py-3 rounded-lg">
+                <p className="text-emerald-500 font-bold text-sm uppercase">Position Verrouillée</p>
+                {accuracy !== null && <SignalIndicator accuracy={accuracy} />}
               </div>
-              
-              {accuracy !== null && <SignalIndicator accuracy={accuracy} />}
               
               {coordinates && (
                 <div className="bg-slate-800/50 rounded-lg p-3 text-left">
@@ -363,11 +365,17 @@ const GeoLocate = () => {
                 </div>
               )}
 
+              <a href={smsLink} className="block w-full">
+                <Button className="w-full bg-emerald-600 hover:bg-emerald-500 h-20 text-xl font-black rounded-2xl shadow-[0_0_20px_rgba(16,185,129,0.3)]">
+                  <Send className="mr-3 w-6 h-6" /> ENVOYER LE SMS
+                </Button>
+              </a>
+
               <button 
                 onClick={handleLocate}
                 className="flex items-center justify-center w-full py-3 text-slate-400 text-sm hover:text-white transition-colors"
               >
-                <RefreshCcw className="w-4 h-4 mr-2" /> 
+                <RefreshCcw className="w-4 h-4 mr-2" />
                 Actualiser la position
               </button>
             </div>
@@ -393,7 +401,7 @@ const GeoLocate = () => {
               
               <Button 
                 onClick={handleLocate} 
-                variant="outline" 
+                variant="outline"
                 className="w-full border-slate-700 text-slate-300 hover:bg-slate-800 rounded-xl"
               >
                 Réessayer
@@ -404,7 +412,7 @@ const GeoLocate = () => {
       </div>
       
       <p className="mt-8 text-slate-600 text-[10px] uppercase tracking-widest font-bold">
-        Système d'Alerte Géolocalisé v4.0 • GPS Direct
+        Système d'Alerte Géolocalisé v3.0 • GPS Satellite
       </p>
     </div>
   );
