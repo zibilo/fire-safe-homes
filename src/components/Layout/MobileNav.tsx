@@ -1,85 +1,108 @@
 import { Link, useLocation } from "react-router-dom";
-import { Home, Users, BookOpen } from "lucide-react";
+import { Home, Users, BookOpen, Sun, Moon } from "lucide-react";
 import { motion } from "framer-motion";
 import { cn } from "@/lib/utils";
+import { useTheme } from "@/contexts/ThemeContext";
 
-// Définition des libellés et des chemins
-const navItemsData = [
-  { path: "/", label: "Accueil", icon: Home },
+const navItems = [
+  { path: "/home", label: "Accueil", icon: Home },
   { path: "/profiles", label: "Profils", icon: Users },
-  { path: "/blog", label: "Actus", icon: BookOpen },
+  { path: "/blog", label: "Blog", icon: BookOpen },
 ];
 
 const MobileNav = () => {
   const location = useLocation();
+  const { theme, toggleTheme } = useTheme();
 
   return (
     <>
-      {/* Navigation mobile optimisée Android */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-black/95 backdrop-blur-xl border-t border-white/5">
-        {/* Safe area padding pour les appareils à encoche */}
-        <div className="safe-area-bottom">
-          <ul className="flex justify-around items-center max-w-md mx-auto w-full h-16 px-2"> 
-            {navItemsData.map((item) => {
-              const isActive =
-                item.path === "/"
-                  ? location.pathname === "/"
-                  : location.pathname.startsWith(item.path);
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50">
+        {/* Glass morphism background */}
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-2xl border-t border-border" />
+        
+        <div className="relative safe-area-bottom">
+          <ul className="flex items-center justify-around max-w-md mx-auto h-16 px-2">
+            {navItems.map((item) => {
+              const isActive = location.pathname === item.path || 
+                (item.path === "/home" && location.pathname === "/");
 
               return (
-                <li key={item.path} className="flex-1 flex justify-center">
+                <li key={item.path} className="relative">
                   <Link
                     to={item.path}
-                    className={cn(
-                      "flex flex-col items-center justify-center gap-0.5 w-full py-2 px-3 rounded-xl transition-all duration-200 touch-manipulation",
-                      "active:scale-95 active:bg-white/5",
-                      "min-h-[48px]" // Material Design touch target
-                    )}
-                    style={{ WebkitTapHighlightColor: 'transparent' }}
+                    className="flex flex-col items-center justify-center w-16 h-14 rounded-2xl transition-all duration-300"
                   >
-                    {/* Indicateur actif */}
+                    {/* Active background pill */}
                     {isActive && (
                       <motion.div
-                        layoutId="nav-active-indicator"
-                        className="absolute -top-0.5 w-10 h-1 bg-primary rounded-full shadow-lg shadow-primary/50"
-                        initial={false}
-                        transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                        layoutId="nav-pill"
+                        className="absolute inset-0 bg-primary/10 rounded-2xl"
+                        transition={{ type: "spring", stiffness: 500, damping: 35 }}
                       />
                     )}
 
-                    {/* Icône avec hardware acceleration */}
-                    <div className="relative z-10 transform-gpu"> 
+                    {/* Icon */}
+                    <motion.div
+                      animate={{ 
+                        scale: isActive ? 1.1 : 1,
+                        y: isActive ? -2 : 0 
+                      }}
+                      transition={{ type: "spring", stiffness: 400, damping: 25 }}
+                      className="relative z-10"
+                    >
                       <item.icon
                         className={cn(
-                          "w-6 h-6 transition-all duration-200",
-                          isActive
-                            ? "text-primary scale-110"
-                            : "text-gray-400"
+                          "w-5 h-5 transition-colors duration-200",
+                          isActive ? "text-primary" : "text-muted-foreground"
                         )}
                         strokeWidth={isActive ? 2.5 : 2}
                       />
-                    </div>
+                    </motion.div>
 
                     {/* Label */}
-                    <span
+                    <motion.span
+                      animate={{ opacity: isActive ? 1 : 0.7 }}
                       className={cn(
-                        "text-[10px] font-medium transition-colors duration-200",
-                        isActive 
-                          ? "text-primary" 
-                          : "text-gray-400"
+                        "text-[10px] mt-1 font-medium relative z-10 transition-colors",
+                        isActive ? "text-primary" : "text-muted-foreground"
                       )}
                     >
                       {item.label}
-                    </span>
+                    </motion.span>
                   </Link>
                 </li>
               );
             })}
+
+            {/* Theme toggle */}
+            <li>
+              <button
+                onClick={toggleTheme}
+                className="flex flex-col items-center justify-center w-16 h-14 rounded-2xl transition-all duration-300 active:scale-95"
+              >
+                <motion.div
+                  key={theme}
+                  initial={{ rotate: -90, opacity: 0 }}
+                  animate={{ rotate: 0, opacity: 1 }}
+                  exit={{ rotate: 90, opacity: 0 }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {theme === "dark" ? (
+                    <Sun className="w-5 h-5 text-amber-400" />
+                  ) : (
+                    <Moon className="w-5 h-5 text-indigo-500" />
+                  )}
+                </motion.div>
+                <span className="text-[10px] mt-1 font-medium text-muted-foreground">
+                  {theme === "dark" ? "Jour" : "Nuit"}
+                </span>
+              </button>
+            </li>
           </ul>
         </div>
       </nav>
-      
-      {/* Spacer pour éviter que le contenu soit caché derrière la nav */}
+
+      {/* Spacer */}
       <div className="md:hidden h-20 safe-area-bottom" />
     </>
   );
