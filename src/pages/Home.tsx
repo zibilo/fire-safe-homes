@@ -1,55 +1,26 @@
 import { Link } from "react-router-dom";
-import { useState, useRef, useEffect } from "react"; 
-import { Button } from "@/components/ui/button";
-import { Shield, MapPin, Plus, HelpCircle, Volume2, PhoneCall, HomeIcon } from "lucide-react"; 
-import { motion } from "framer-motion"; 
+import { useState, useRef, useEffect } from "react";
+import { Shield, MapPin, Plus, Volume2, PhoneCall, Home as HomeIcon } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
+import MobileNav from "@/components/Layout/MobileNav";
 
-// Composant principal Home
 export default function Home() {
-  
-  const [isAudioWidgetOpen, setIsAudioWidgetOpen] = useState(false);
-  const [isMenuVisible, setIsMenuVisible] = useState(false); 
-  const [showCallButton, setShowCallButton] = useState(false); 
+  const [isAudioOpen, setIsAudioOpen] = useState(false);
+  const [currentlyPlaying, setCurrentlyPlaying] = useState<string | null>(null);
+  const [showCall, setShowCall] = useState(false);
 
-  // Références pour l'audio (Assurez-vous que ces fichiers existent dans le dossier public)
   const audioRefFr = useRef(new Audio("/1/1.wav"));
   const audioRefLn = useRef(new Audio("/2/2.wav"));
-  const [currentlyPlaying, setCurrentlyPlaying] = useState(null);
 
-  // LOGIQUE 1 : Arrêter l'audio au DÉMONTAGE du composant
   useEffect(() => {
-    return () => {
-      stopAllAudio(); 
-    };
-  }, []); 
+    return () => stopAllAudio();
+  }, []);
 
-  // LOGIQUE 2 : TRANSITION D'ENTRÉE/SORTIE (Widget Audio)
   useEffect(() => {
-    if (isAudioWidgetOpen) {
-      setIsMenuVisible(true);
-    } else {
-      const timer = setTimeout(() => {
-        setIsMenuVisible(false);
-      }, 200); 
-      return () => clearTimeout(timer);
-    }
-  }, [isAudioWidgetOpen]);
-
-  // LOGIQUE 3 : AFFICHAGE DU BOUTON D'APPEL (Apparaît après un court délai)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setShowCallButton(true);
-    }, 500); 
+    const timer = setTimeout(() => setShowCall(true), 800);
     return () => clearTimeout(timer);
   }, []);
 
-  const toggleAudioWidget = () => {
-    if (isAudioWidgetOpen) {
-      stopAllAudio();
-    }
-    setIsAudioWidgetOpen(!isAudioWidgetOpen);
-  };
-  
   const stopAllAudio = () => {
     audioRefFr.current.pause();
     audioRefFr.current.currentTime = 0;
@@ -58,341 +29,165 @@ export default function Home() {
     setCurrentlyPlaying(null);
   };
 
-  const playAudio = (language) => {
-    stopAllAudio(); 
-
-    let audioToPlay;
-    let newPlayingState;
-
-    if (language === 'fr') {
-      audioToPlay = audioRefFr.current;
-      newPlayingState = 'fr';
-    } else if (language === 'ln') {
-      audioToPlay = audioRefLn.current;
-      newPlayingState = 'ln';
-    } else {
-      return; 
-    }
-
-    audioToPlay.play()
+  const playAudio = (lang: string) => {
+    stopAllAudio();
+    const audio = lang === "fr" ? audioRefFr.current : audioRefLn.current;
+    audio.play()
       .then(() => {
-        setCurrentlyPlaying(newPlayingState);
-        audioToPlay.onended = () => {
-          setCurrentlyPlaying(null);
-        };
+        setCurrentlyPlaying(lang);
+        audio.onended = () => setCurrentlyPlaying(null);
       })
-      .catch(error => {
-        console.error(`Erreur de lecture audio pour ${language}:`, error);
-        // Alert supprimée pour une meilleure UX, mais le log d'erreur reste utile
-        setCurrentlyPlaying(null);
-      });
+      .catch(console.error);
   };
 
-
   return (
-    <div className="fixed inset-0 bg-black flex flex-col overflow-hidden" style={{ minHeight: '100dvh' }}>
-
-      {/* ===== HEADER (z-50) - Optimisé Android ===== */}
-      <header className="fixed top-0 left-0 w-full h-14 flex items-center justify-center bg-black/95 backdrop-blur-xl z-50 border-b border-white/5 safe-area-top">
-        <h1 className="text-white font-bold text-lg tracking-wide">Centre de Secours</h1>
-      </header>
+    <div className="fixed inset-0 bg-background flex flex-col overflow-hidden">
+      {/* Subtle gradient overlay */}
+      <div className="absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent pointer-events-none" />
       
-      {/* ===== WIDGET AIDE AUDIO (Centré) ===== */}
-      <div className="fixed top-[70px] z-40 left-1/2 -translate-x-1/2"> 
+      {/* Main content */}
+      <main className="flex-1 flex flex-col items-center justify-center px-6 pb-32 relative z-10">
         
-        <div className="relative"> 
-            
-            {/* Bouton HelpCircle (?) (le déclencheur) */}
-            <Button
-            onClick={toggleAudioWidget}
-            className="h-10 w-10 p-0 rounded-full bg-red-900/40 border border-red-700 hover:bg-red-900/60 transition-colors duration-300 shadow-md shadow-red-900/50"
-            title="Aide Vocale"
-            >
-            <HelpCircle className="h-6 w-6 text-red-500" /> 
-            </Button>
-
-            {/* Conteneur des options audio (Menu déroulant - AVEC FRAMER MOTION) */}
-            {isMenuVisible && (
-            <motion.div 
-                initial={{ opacity: 0, scale: 0.9, y: -8 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
-                exit={{ opacity: 0, scale: 0.9, y: -8 }}
-                transition={{ duration: 0.2 }}
-                className={`
-                absolute top-full left-1/2 -translate-x-1/2 mt-2 flex flex-col p-2 
-                bg-neutral-900 rounded-lg shadow-2xl space-y-1 
-                border border-red-900/70 min-w-[150px]
-                `}
-            >
-                <p className="text-xs font-semibold text-red-400 mb-1 text-center">Guide Audio</p>
-                
-                {/* Bouton Français */}
-                <Button
-                onClick={() => playAudio('fr')}
-                className={`
-                    w-full justify-start h-8 text-sm transition rounded
-                    ${currentlyPlaying === 'fr' ? 'bg-red-700 hover:bg-red-600' : 'bg-neutral-800 hover:bg-neutral-700'}
-                `}
-                >
-                <Volume2 className={`mr-2 h-4 w-4 ${currentlyPlaying === 'fr' ? 'text-white' : 'text-gray-400'}`} />
-                Français (FR)
-                </Button>
-                
-                {/* Bouton Lingala */}
-                <Button
-                onClick={() => playAudio('ln')}
-                className={`
-                    w-full justify-start h-8 text-sm transition rounded
-                    ${currentlyPlaying === 'ln' ? 'bg-red-700 hover:bg-red-600' : 'bg-neutral-800 hover:bg-neutral-700'}
-                `}
-                >
-                <Volume2 className={`mr-2 h-4 w-4 ${currentlyPlaying === 'ln' ? 'text-white' : 'text-gray-400'}`} />
-                Lingala (LN)
-                </Button>
-                
-                {/* Bouton Arrêter tout */}
-                <Button
-                    onClick={stopAllAudio}
-                    variant="ghost"
-                    className={`
-                        w-full h-6 text-xs mt-1 transition
-                        ${currentlyPlaying ? 'text-red-400 hover:bg-red-900/50' : 'text-gray-600 cursor-default hover:bg-transparent'}
-                    `}
-                    disabled={!currentlyPlaying}
-                >
-                    Arrêter la lecture
-                </Button>
-                
-            </motion.div>
-            )}
-        </div>
-      </div>
-      {/* ===== FIN WIDGET AIDE AUDIO ===== */}
-
-
-      {/* ===== CONTENU PRINCIPAL (Monté) ===== */}
-      {/* CORRECTION MOBILE : pt-[140px] pour décaler le contenu sous le header et le widget audio */}
-      <main className="flex flex-col items-center justify-center flex-1 px-24 pb-40 space-y-8 bg-black pt-[140px]">
-
-        {/* ICÔNE & TITRE */}
-        <div className="flex flex-col items-center text-center space-y-2">
-          <Shield className="h-20 w-20 text-red-500 animate-bounce-slow" strokeWidth={1.2} />
-          <h1 className="text-3xl font-extrabold text-white">AIDE D’URGENCE</h1>
-          <p className="text-sm text-gray-400">Intervention pompiers prioritaire</p>
-        </div>
-
-        {/* BOUTONS PRINCIPAUX */}
-        <div className="flex flex-col w-full max-w-[300px] gap-4">
-
-          {/* 1. BOUTON URGENCE (Style Blob + Animation d'entrée unique + Largeur Réduite) */}
+        {/* Hero section */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="text-center mb-12"
+        >
+          {/* Icon */}
           <motion.div
-            initial={{ opacity: 0, y: 50, scale: 1.1 }} 
-            animate={{ 
-                opacity: 1, 
-                y: 0, 
-                scale: [1.1, 1, 0.98, 1], // Animation de rebond (diminue et revient à la normale)
-                scaleX: [1.05, 1], // Petite réduction de largeur
-            }}
-            transition={{ 
-                duration: 0.8, 
-                type: "spring", 
-                stiffness: 100,
-                scale: { duration: 0.5, times: [0, 0.7, 0.9, 1] }
-            }}
-            className="w-full flex justify-center" // Centrage du bouton
+            initial={{ scale: 0.8 }}
+            animate={{ scale: 1 }}
+            transition={{ delay: 0.2, type: "spring", stiffness: 200 }}
+            className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-primary/10 mb-6"
           >
-            <Link to="/loc/urgence" className="w-full max-w-[200px]"> {/* Définition de la largeur max */}
-              <button className="blob-button">
-                <div className="blob1"></div>
-                <div className="blob2"></div>
-                <div className="inner">
-                    <MapPin className="mr-3 h-5 w-5" />
-                    URGENCE
-                </div>
-              </button>
-            </Link>
+            <Shield className="w-10 h-10 text-primary" strokeWidth={1.5} />
           </motion.div>
 
-          {/* 2. BOUTON AJOUT PROPRIÉTÉ (Statique, Icônes Maison + Plus) */}
-          <Link to="/register-house">
-            <Button
-              variant="outline"
-              className="w-full h-12 flex items-center justify-center border-neutral-700 text-white/80 rounded-xl hover:bg-white/5 transition"
+          {/* Title */}
+          <h1 className="text-3xl font-bold text-foreground tracking-tight mb-2">
+            Centre de Secours
+          </h1>
+          <p className="text-muted-foreground text-sm">
+            Intervention pompiers prioritaire
+          </p>
+        </motion.div>
+
+        {/* Action buttons */}
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.3, duration: 0.5 }}
+          className="w-full max-w-xs space-y-4"
+        >
+          {/* Emergency button */}
+          <Link to="/loc/urgence" className="block">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full h-14 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-semibold flex items-center justify-center gap-3 shadow-lg shadow-primary/25 transition-colors"
             >
-              <Plus className="mr-2 h-5 w-5 text-yellow-400" />
-              <HomeIcon className="mr-2 h-5 w-5 text-yellow-400" />
-              PROPRIÉTÉ
-            </Button>
+              <MapPin className="w-5 h-5" />
+              <span>Urgence</span>
+            </motion.button>
           </Link>
 
-        </div>
+          {/* Property button */}
+          <Link to="/register-house" className="block">
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              className="w-full h-14 bg-card hover:bg-accent border border-border text-foreground rounded-2xl font-medium flex items-center justify-center gap-3 transition-colors"
+            >
+              <div className="flex items-center gap-1">
+                <Plus className="w-4 h-4 text-primary" />
+                <HomeIcon className="w-5 h-5 text-primary" />
+              </div>
+              <span>Enregistrer ma propriété</span>
+            </motion.button>
+          </Link>
+        </motion.div>
+
+        {/* Audio help toggle */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="mt-10"
+        >
+          <button
+            onClick={() => {
+              if (isAudioOpen) stopAllAudio();
+              setIsAudioOpen(!isAudioOpen);
+            }}
+            className="flex items-center gap-2 px-4 py-2 rounded-full bg-muted hover:bg-muted/80 text-muted-foreground text-sm transition-colors"
+          >
+            <Volume2 className="w-4 h-4" />
+            <span>Aide vocale</span>
+          </button>
+
+          <AnimatePresence>
+            {isAudioOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: "auto" }}
+                exit={{ opacity: 0, y: -10, height: 0 }}
+                className="mt-3 flex flex-col items-center gap-2"
+              >
+                <button
+                  onClick={() => playAudio("fr")}
+                  className={`px-4 py-2 rounded-xl text-sm transition-colors ${
+                    currentlyPlaying === "fr" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-card border border-border text-foreground hover:bg-accent"
+                  }`}
+                >
+                  🇫🇷 Français
+                </button>
+                <button
+                  onClick={() => playAudio("ln")}
+                  className={`px-4 py-2 rounded-xl text-sm transition-colors ${
+                    currentlyPlaying === "ln" 
+                      ? "bg-primary text-primary-foreground" 
+                      : "bg-card border border-border text-foreground hover:bg-accent"
+                  }`}
+                >
+                  🇨🇩 Lingala
+                </button>
+                {currentlyPlaying && (
+                  <button
+                    onClick={stopAllAudio}
+                    className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    Arrêter
+                  </button>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </motion.div>
       </main>
 
-      {/* ===== WIDGET D'APPEL DIRECT (118) - FRAMER MOTION ===== */}
-      {showCallButton && (
-        <motion.a 
+      {/* Floating call button */}
+      <AnimatePresence>
+        {showCall && (
+          <motion.a
             href="tel:118"
-            title="Appeler les pompiers (118)"
-            initial={{ opacity: 0, scale: 0.5, y: 50 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.5, y: 50 }}
-            transition={{ duration: 0.3, type: "spring", stiffness: 150 }}
-            className={`
-                fixed bottom-24 right-8 
-                w-16 h-16 
-                bg-red-600 hover:bg-red-500 active:bg-red-700
-                rounded-full 
-                flex items-center justify-center 
-                shadow-2xl shadow-red-700/60 
-                z-50
-            `}
-        >
-            <PhoneCall className="h-8 w-8 text-white animate-pulse-fast" strokeWidth={2.5} />
-        </motion.a>
-      )}
-      
-      {/* ===== ANIMATIONS CSS ET COMPATIBILITÉ ANDROID ===== */}
-      <style>{`
-        /* === COMPATIBILITÉ ANDROID TOUTES VERSIONS === */
-        
-        /* Dynamic viewport height (Android 7.0+) */
-        @supports (min-height: 100dvh) {
-          .min-h-dvh { min-height: 100dvh; }
-        }
-        
-        /* Fallback pour Android < 7.0 */
-        @supports not (min-height: 100dvh) {
-          .min-h-dvh { 
-            min-height: 100vh;
-            min-height: calc(var(--vh, 1vh) * 100);
-          }
-        }
-        
-        /* Hardware acceleration pour animations fluides */
-        .transform-gpu {
-          transform: translateZ(0);
-          -webkit-transform: translateZ(0);
-          will-change: transform;
-        }
-        
-        /* Touch targets Material Design (48dp min) */
-        @media (pointer: coarse) {
-          button, a, [role="button"] {
-            min-height: 48px;
-          }
-        }
-        
-        /* Empêcher le zoom sur double-tap Android */
-        * {
-          touch-action: manipulation;
-        }
-        
-        /* Safe areas pour appareils à encoche */
-        .safe-area-top {
-          padding-top: env(safe-area-inset-top, 0px);
-          padding-top: constant(safe-area-inset-top, 0px);
-        }
-        
-        .safe-area-bottom {
-          padding-bottom: env(safe-area-inset-bottom, 0px);
-          padding-bottom: constant(safe-area-inset-bottom, 0px);
-        }
-        
-        /* === ANIMATIONS === */
-        @keyframes bounce-slow {
-          0%, 100% { transform: translateY(0); }
-          50% { transform: translateY(-10px); }
-        }
-        .animate-bounce-slow {
-          animation: bounce-slow 2.5s infinite;
-        }
+            initial={{ opacity: 0, scale: 0.5 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.5 }}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.9 }}
+            className="fixed bottom-28 right-6 w-14 h-14 bg-primary rounded-full flex items-center justify-center shadow-xl shadow-primary/30 z-50"
+          >
+            <PhoneCall className="w-6 h-6 text-primary-foreground" />
+          </motion.a>
+        )}
+      </AnimatePresence>
 
-        @keyframes pulse-fast {
-          0% { transform: scale(1); opacity: 1; }
-          50% { transform: scale(1.1); opacity: 0.8; }
-          100% { transform: scale(1); opacity: 1; }
-        }
-        .animate-pulse-fast {
-          animation: pulse-fast 1.5s infinite ease-in-out;
-        }
-        
-        /* === STYLES DU BOUTON URGENCE (BLOB) === */
-        .blob-button {
-          cursor: pointer;
-          border-radius: 16px;
-          border: none;
-          padding: 2px;
-          background: radial-gradient(circle 80px at 80% -10%, #fff0f0, #200000); 
-          position: relative;
-          width: 100%; 
-          transition: background 0.3s, transform 0.3s;
-          font-weight: bold;
-          font-size: 1.1rem;
-          -webkit-tap-highlight-color: transparent;
-          touch-action: manipulation;
-        }
-
-        .blob-button:active {
-          transform: scale(0.96); 
-        }
-
-        .blob-button::after {
-          content: "";
-          position: absolute;
-          width: 65%;
-          height: 60%;
-          border-radius: 120px;
-          top: 0;
-          right: 0;
-          box-shadow: 0 0 20px #ff505038; 
-          z-index: -1;
-        }
-
-        .blob-button .blob1 {
-          position: absolute;
-          width: 70px;
-          height: 100%;
-          border-radius: 16px;
-          bottom: 0;
-          left: 0;
-          background: radial-gradient(
-            circle 60px at 0% 100%,
-            #ff733f,
-            #ff000080,
-            transparent
-          );
-          box-shadow: -10px 10px 30px #ff45002d;
-        }
-
-        .blob-button .inner {
-          padding: 14px 25px;
-          border-radius: 14px;
-          color: #fff;
-          z-index: 3;
-          position: relative;
-          background: radial-gradient(circle 80px at 80% -50%, #883333, #300505); 
-          display: flex; 
-          align-items: center;
-          justify-content: center;
-          min-height: 48px;
-        }
-
-        .blob-button .inner::before {
-          content: "";
-          width: 100%;
-          height: 100%;
-          left: 0;
-          top: 0;
-          border-radius: 14px;
-          background: radial-gradient(
-            circle 60px at 0% 100%,
-            #ff00001a,
-            #ff450011,
-            transparent
-          );
-          position: absolute;
-        }
-      `}</style>
+      {/* Mobile navigation */}
+      <MobileNav />
     </div>
   );
 }
