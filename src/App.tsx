@@ -9,6 +9,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { AdminAuthProvider } from "@/contexts/AdminAuthContext";
 import { ThemeProvider } from "@/contexts/ThemeContext";
 import { AdminProtectedRoute } from "@/components/AdminProtectedRoute";
+import { PushNotificationHandler } from "@/components/PushNotificationHandler";
 
 // --- IMPORTS STATIQUES (Doivent être en haut) ---
 import Home from "./pages/Home";
@@ -23,7 +24,6 @@ import Navbar from "./components/Layout/Navbar";
 import Footer from "./components/Layout/Footer";
 import MobileNav from "./components/Layout/MobileNav";
 import HoverReceiver from "@/visual-edits/VisualEditsMessenger";
-
 // Pages Admin
 import AdminLogin from "./pages/Admin/AdminLogin";
 import AdminRegister from "./pages/Admin/AdminRegister";
@@ -121,6 +121,7 @@ const App = () => {
           <Toaster />
           <Sonner />
           <HoverReceiver />
+          <PushNotificationHandler />
           <BrowserRouter>
             <AuthProvider>
               <AdminAuthProvider>
