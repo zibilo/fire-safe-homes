@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
-import { useState, useRef, useEffect } from "react";
-import { Shield, MapPin, Plus, Volume2, PhoneCall, Home as HomeIcon, X } from "lucide-react";
+import { useState, useRef } from "react";
+import { Shield, MapPin, Plus, Volume2, PhoneCall, Home as HomeIcon, X, Mic2 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 
 export default function Home() {
@@ -28,124 +28,101 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-[#FBFBFD] text-[#1D1D1F] font-sans selection:bg-primary/10">
+    // "h-screen overflow-hidden" empêche le scroll inutile et force tout à tenir dans l'écran
+    <div className="h-screen w-full bg-[#F8F9FA] text-[#1D1D1F] flex flex-col overflow-hidden font-sans">
       
-      {/* Top Bar Discrète */}
-      <nav className="p-6 flex justify-between items-center">
+      {/* Header compact */}
+      <header className="pt-8 px-6 flex justify-between items-center">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
-            <Shield className="w-5 h-5 text-primary" strokeWidth={2} />
-          </div>
-          <span className="font-semibold tracking-tight text-sm uppercase">Secours App</span>
+          <Shield className="w-6 h-6 text-red-600" />
+          <span className="font-bold text-xs uppercase tracking-widest opacity-50">Urgence 242</span>
         </div>
         <button 
           onClick={() => setIsAudioOpen(!isAudioOpen)}
-          className={`p-2 rounded-full transition-all ${isAudioOpen ? 'bg-primary text-white' : 'bg-secondary'}`}
+          className="w-10 h-10 rounded-full bg-white shadow-sm border border-gray-100 flex items-center justify-center text-gray-600"
         >
-          <Volume2 className="w-5 h-5" />
+          {isAudioOpen ? <X className="w-5 h-5" /> : <Volume2 className="w-5 h-5" />}
         </button>
-      </nav>
+      </header>
 
-      <main className="max-w-md mx-auto px-8 pt-12 pb-24 flex flex-col min-h-[80vh]">
+      {/* Main Content - Flex grow pour occuper l'espace central */}
+      <main className="flex-1 flex flex-col justify-center px-6 gap-6">
         
-        {/* Hero Section Ultra-Minimal */}
-        <header className="mb-16">
-          <motion.h1 
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-4xl font-bold tracking-tight leading-tight"
-          >
-            Comment pouvons-nous <br/>
-            <span className="text-primary">vous aider ?</span>
-          </motion.h1>
-          <p className="mt-4 text-gray-500 font-medium">Intervention rapide 24h/7j</p>
-        </header>
+        <section>
+          <h1 className="text-3xl font-extrabold tracking-tight">Centre de Secours</h1>
+          <p className="text-gray-500 text-sm mt-1 font-medium">Appuyez sur le bouton rouge en cas d'urgence.</p>
+        </section>
 
-        {/* Actions Principales */}
-        <div className="grid gap-4 w-full">
-          <Link to="/loc/urgence">
+        {/* Grille de boutons principale */}
+        <div className="space-y-4">
+          <Link to="/loc/urgence" className="block">
             <motion.div
-              whileTap={{ scale: 0.97 }}
-              className="relative overflow-hidden p-6 rounded-[2rem] bg-primary text-white shadow-2xl shadow-primary/20 group"
+              whileTap={{ scale: 0.98 }}
+              className="bg-red-600 h-28 rounded-3xl p-6 flex items-center justify-between shadow-xl shadow-red-200"
             >
-              <div className="relative z-10 flex flex-col h-32 justify-between">
-                <MapPin className="w-8 h-8 opacity-80" />
-                <div>
-                  <h2 className="text-xl font-bold italic">URGENCE</h2>
-                  <p className="text-sm opacity-80">Signaler un incident immédiat</p>
-                </div>
+              <div className="text-white">
+                <span className="text-xs font-bold uppercase opacity-80 block mb-1">Action immédiate</span>
+                <h2 className="text-2xl font-black">URGENCE</h2>
               </div>
-              {/* Effet de lumière en arrière-plan */}
-              <div className="absolute top-0 right-0 -mr-8 -mt-8 w-32 h-32 bg-white/10 rounded-full blur-3xl group-hover:bg-white/20 transition-all" />
+              <div className="bg-white/20 p-3 rounded-2xl">
+                <MapPin className="text-white w-8 h-8" />
+              </div>
             </motion.div>
           </Link>
 
-          <Link to="/register-house">
+          <Link to="/register-house" className="block">
             <motion.div
-              whileTap={{ scale: 0.97 }}
-              className="p-6 rounded-[2rem] bg-white border border-gray-100 flex items-center justify-between hover:bg-gray-50 transition-colors shadow-sm"
+              whileTap={{ scale: 0.98 }}
+              className="bg-white border border-gray-100 h-20 rounded-3xl px-6 flex items-center gap-4 shadow-sm"
             >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-secondary flex items-center justify-center">
-                  <HomeIcon className="w-6 h-6 text-gray-700" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Ma Propriété</h3>
-                  <p className="text-xs text-gray-400 font-medium">Enregistrer mon adresse</p>
-                </div>
+              <div className="bg-gray-50 p-2 rounded-xl">
+                <HomeIcon className="text-gray-400 w-5 h-5" />
               </div>
-              <Plus className="w-5 h-5 text-gray-300" />
+              <span className="font-semibold text-gray-700">Ma Propriété</span>
+              <Plus className="ml-auto text-gray-300 w-5 h-5" />
             </motion.div>
           </Link>
         </div>
 
-        {/* Aide Vocale Pop-up (Glassmorphism) */}
+        {/* Aide Vocale intégrée (ne masque rien) */}
         <AnimatePresence>
           {isAudioOpen && (
             <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
-              className="fixed bottom-24 left-6 right-6 p-4 rounded-3xl bg-white/80 backdrop-blur-xl border border-white/20 shadow-2xl z-50 flex items-center justify-around"
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="bg-gray-100/50 rounded-2xl p-2 flex gap-2 overflow-hidden"
             >
               <button 
                 onClick={() => playAudio("fr")}
-                className={`flex flex-col items-center gap-1 transition-opacity ${currentlyPlaying === 'ln' ? 'opacity-40' : 'opacity-100'}`}
+                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${currentlyPlaying === 'fr' ? 'bg-black text-white' : 'bg-white'}`}
               >
-                <span className="text-2xl">🇫🇷</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Français</span>
-                {currentlyPlaying === 'fr' && <motion.div layoutId="dot" className="w-1 h-1 bg-primary rounded-full" />}
+                FRANÇAIS
               </button>
-
-              <div className="w-[1px] h-8 bg-gray-200" />
-
               <button 
                 onClick={() => playAudio("ln")}
-                className={`flex flex-col items-center gap-1 transition-opacity ${currentlyPlaying === 'fr' ? 'opacity-40' : 'opacity-100'}`}
+                className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${currentlyPlaying === 'ln' ? 'bg-black text-white' : 'bg-white'}`}
               >
-                <span className="text-2xl">🇨🇬</span>
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Lingala</span>
-                {currentlyPlaying === 'ln' && <motion.div layoutId="dot" className="w-1 h-1 bg-primary rounded-full" />}
-              </button>
-
-              <button onClick={stopAllAudio} className="p-2 bg-gray-100 rounded-full">
-                <X className="w-4 h-4 text-gray-500" />
+                LINGALA
               </button>
             </motion.div>
           )}
         </AnimatePresence>
       </main>
 
-      {/* Appel Rapide - Floating Action Button Minimaliste */}
-      <motion.a
-        href="tel:118"
-        initial={{ scale: 0 }}
-        animate={{ scale: 1 }}
-        whileHover={{ scale: 1.1 }}
-        className="fixed bottom-8 right-8 w-16 h-16 bg-[#1D1D1F] rounded-full flex items-center justify-center shadow-xl z-40"
-      >
-        <PhoneCall className="w-6 h-6 text-white" />
-      </motion.a>
+      {/* Footer fixe pour le bouton 118 - Toujours visible et accessible */}
+      <footer className="p-6 bg-white border-t border-gray-50">
+        <motion.a
+          href="tel:118"
+          whileTap={{ scale: 0.95 }}
+          className="w-full bg-[#1D1D1F] text-white h-16 rounded-2xl flex items-center justify-center gap-3 shadow-lg"
+        >
+          <div className="bg-red-500 p-1.5 rounded-full animate-pulse">
+            <PhoneCall className="w-5 h-5 text-white" />
+          </div>
+          <span className="font-bold tracking-tight text-lg">Appeler le 118</span>
+        </motion.a>
+      </footer>
     </div>
   );
 }
